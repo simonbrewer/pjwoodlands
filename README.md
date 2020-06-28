@@ -14,3 +14,5 @@ V1: Simple binary suitability and growth
 V2: Added continuous suitability and biomass driven competition
 
 V3: Added mortality
+
+Have dropped versioning numbers with the moved to GitHub 

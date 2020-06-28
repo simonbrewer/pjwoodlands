@@ -40,7 +40,7 @@ to setup
         set shape "tree"
         set size height
         set canopy 0.01
-        set mortality 0.01
+        set mortality 0.001
       ]
     ]
   ]
@@ -49,13 +49,14 @@ to setup
 end
 
 to go
-  if ticks > 200 [
+  if ticks > 120 [
     stop
   ]
   ask trees
   [
     grow-one-year
     competition
+    death
 
   ]
   tick
@@ -67,6 +68,10 @@ to grow-one-year
     set height height + 0.1
     set biomass biomass + random-float [suitability] of patch-here
     set canopy (age / 100) * 10
+  ]
+  if age > 100 [
+    set mortality (age - 100) / 100
+    print mortality
   ]
   set size height
 end
@@ -80,6 +85,14 @@ to competition
     ]
   ]
 
+end
+
+to death
+  if random-float 1 < mortality
+  [
+    print "I'm dying here"
+    die
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
