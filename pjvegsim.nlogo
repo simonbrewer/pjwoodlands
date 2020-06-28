@@ -6,6 +6,11 @@
 ;; Introduces mortality as increase probability > 50 years
 ;; Include very low mortality for yonger trees
 
+globals
+[
+  recruit-rate
+]
+
 patches-own
 [
   suitability
@@ -27,6 +32,8 @@ trees-own
 to setup
   ca
 
+  set recruit-rate 0.5 ;; chance of recruitment in next step
+
   ask patches [
     set suitability random-float 1
     set pcolor scale-color gray suitability 0 1
@@ -34,14 +41,7 @@ to setup
 
   ask patches[
     if random-float 1 < suitability [
-      sprout-trees 1 [
-        set age 0
-        set height 0.1
-        set shape "tree"
-        set size height
-        set canopy 0.01
-        set mortality 0.001
-      ]
+      make-a-tree
     ]
   ]
 
@@ -57,7 +57,10 @@ to go
     grow-one-year
     competition
     death
+  ]
 
+  ask patches [
+    recruit-trees
   ]
   tick
 end
@@ -71,7 +74,6 @@ to grow-one-year
   ]
   if age > 100 [
     set mortality (age - 100) / 100
-    print mortality
   ]
   set size height
 end
@@ -90,8 +92,30 @@ end
 to death
   if random-float 1 < mortality
   [
-    print "I'm dying here"
+    ;print "I'm dying here"
     die
+  ]
+end
+
+to recruit-trees
+  let current trees-here
+  if not any? trees-here
+  [
+    if random-float 1 < recruit-rate
+    [
+      make-a-tree
+    ]
+  ]
+end
+
+to make-a-tree
+  sprout-trees 1 [
+    set age 0
+    set height 0.1
+    set shape "tree"
+    set size height
+    set canopy 0.01
+    set mortality 0.001
   ]
 end
 @#$#@#$#@
@@ -172,6 +196,24 @@ NIL
 NIL
 NIL
 1
+
+PLOT
+10
+215
+210
+365
+plot 1
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot count trees"
 
 @#$#@#$#@
 ## WHAT IS IT?
