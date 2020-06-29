@@ -9,6 +9,8 @@
 globals
 [
   recruit-rate
+  dispersal-range
+  reproduction-age
 ]
 
 patches-own
@@ -32,14 +34,16 @@ trees-own
 to setup
   ca
 
-  set recruit-rate 0.5 ;; chance of recruitment in next step
+  set recruit-rate 0.1 ;; chance of recruitment in next step
+  set dispersal-range 25 ;; Range for seed dispersal
+  set reproduction-age 25 ;; Age for seed production
 
   ask patches [
     set suitability random-float 1
     set pcolor scale-color gray suitability 0 1
   ]
 
-  ask patches[
+  ask patches [
     if random-float 1 < suitability [
       make-a-tree
     ]
@@ -49,7 +53,7 @@ to setup
 end
 
 to go
-  if ticks > 120 [
+  if ticks > 1000 [
     stop
   ]
   ask trees
@@ -59,8 +63,13 @@ to go
     death
   ]
 
-  ask patches [
-    recruit-trees
+  if max [age] of trees > reproduction-age
+  [
+    ask patches [
+      if random-float 1 < suitability [
+        recruit-trees
+      ]
+    ]
   ]
   tick
 end
@@ -98,13 +107,15 @@ to death
 end
 
 to recruit-trees
-  let current trees-here
-  if not any? trees-here
+  if not any? trees-here ;; check 1 is the patch open?
   [
-    if random-float 1 < recruit-rate
-    [
-      make-a-tree
-    ]
+    ;if (max [age] of trees in-radius 20 > reproduction-age) [ ;; check 2 old enough
+;    if (max [age] of trees > reproduction-age) [ ;; check 2 old enough
+      if random-float 1 < recruit-rate ;; check 3 success?
+      [
+        make-a-tree
+      ]
+;    ]
   ]
 end
 
@@ -120,9 +131,9 @@ to make-a-tree
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+395
 10
-614
+799
 415
 -1
 -1
@@ -214,6 +225,24 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot count trees"
+
+PLOT
+5
+385
+205
+535
+plot 2
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot sum [biomass] of trees"
 
 @#$#@#$#@
 ## WHAT IS IT?
