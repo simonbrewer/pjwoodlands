@@ -128,7 +128,7 @@ to make-a-tree
     set shape "tree"
     set size height
     set canopy 0.01
-    set mortality-r 0.01
+    set mortality-r 0.
     set mortality-K 1
     set mortality 0.001
     set biomass-r 0.1 * [suitability] of myself
