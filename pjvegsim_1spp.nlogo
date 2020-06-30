@@ -11,11 +11,14 @@ globals
   recruit-rate
   dispersal-range
   reproduction-age
+  age-of-death-mu
+  age-of-death-sigma
 ]
 
 patches-own
 [
   suitability
+  occupied?
 ]
 
 breed [trees tree]
@@ -28,7 +31,7 @@ trees-own
   age
   mortality-r
   mortality-K
-  mortality
+  age-of-death
   biomass-r
   biomass-K
   biomass
@@ -41,15 +44,19 @@ to setup
   set recruit-rate 0.01 ;; chance of recruitment in next step
   set dispersal-range 25 ;; Range for seed dispersal
   set reproduction-age 25 ;; Age for seed production
+  set age-of-death-mu 500
+  set age-of-death-sigma 100
 
   ask patches [
     set suitability random-float 1
     set pcolor scale-color gray suitability 0 1
+    set occupied? false
   ]
 
   ask n-of 10 patches [
     ;if random-float 1 < suitability [
-      make-a-tree
+     make-a-tree
+    set occupied? false
     ;]
   ]
 
@@ -63,8 +70,14 @@ to go
   ask trees
   [
     grow-one-year
-    ;competition
-    death
+    competition
+    if age > 25 [
+      reproduce
+    ]
+    if age > age-of-death [
+      ask patch-here [set occupied? false]
+      die
+    ]
   ]
 
 ;  if max [age] of trees > reproduction-age
@@ -86,7 +99,7 @@ to grow-one-year
     set biomass biomass + (dbiomass * [suitability] of patch-here)
     set canopy (age / 100) * 10
   ]
-  set mortality mortality-K / (1 + exp((-1 * mortality-r) * (age - 500)))
+  ;set mortality mortality-K / (1 + exp((-1 * mortality-r) * (age - 500)))
   set size height
 end
 
@@ -95,17 +108,33 @@ to competition
   [
     if biomass < [biomass] of myself
     [
+      ask patch-here [set occupied? false]
       die
     ]
   ]
 
 end
 
-to death
-  if random-float 1 < mortality
-  [
-    ;print "I'm dying here"
-    die
+;to death
+;  if random-float 1 < mortality
+;  [
+;    ;print "I'm dying here"
+;    die
+;  ]
+;end
+
+to reproduce
+  let nseed random-poisson 10
+  repeat nseed [
+    let seed-target one-of patches in-radius dispersal-range with [occupied? = false]
+    if seed-target != nobody [
+      ask seed-target [
+        if random-float 1 < suitability [
+          make-a-tree
+          set occupied? true
+        ]
+      ]
+    ]
   ]
 end
 
@@ -128,9 +157,9 @@ to make-a-tree
     set shape "tree"
     set size height
     set canopy 0.01
-    set mortality-r 0.01
-    set mortality-K 1
-    set mortality 0.001
+    ;set mortality-r 0.01
+    ;set mortality-K 0.05
+    set age-of-death random-normal age-of-death-mu age-of-death-sigma
     set biomass-r 0.1 * [suitability] of myself
     set biomass-K 100 * [suitability] of myself
     set biomass 0.1
@@ -251,6 +280,17 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot sum [biomass] of trees"
+
+MONITOR
+145
+120
+227
+165
+NIL
+count trees
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?

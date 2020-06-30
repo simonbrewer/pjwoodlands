@@ -67,7 +67,7 @@ ggscatter(plot.df, x = "t", y = "X")
 ## Example of mortality curve
 t = seq(0,1000)
 r = 0.015
-K = 1
+K = 0.1
 X0 = 0.001
 dt = 0.1
 
@@ -77,4 +77,26 @@ ggscatter(plot.df, x = "t", y = "X")
 ## Or as solved equation
 m = K / (1 + exp(-r * (t-500)))
 plot(t, m)
+###############################################################################
+
+## Example of mortality curve
+t = seq(0,1000)
+r = 0.015
+K = 0.1
+X0 = 0.001
+dt = 0.1
+
+plot.df = data.frame(log.euler(t=t, X0, r, K, dt))
+ggscatter(plot.df, x = "t", y = "X")
+
+## Or as solved equation
+m = K / (1 + exp(-r * (t-500)))
+plot(t, m)
+
+## as solved exponential
+## Or as solved equation
+k = 0.01
+m = exp(k * t)
+plot(t, 1 - m)
+
 ###############################################################################
