@@ -17,8 +17,8 @@ globals
 
 patches-own
 [
-  suitability
-  occupied?
+  suitability ;; Used to estimate establishment and growth rates
+  occupied? ;; Is there a tree here (speeds up some requests)
 ]
 
 breed [trees tree]
