@@ -1,41 +1,26 @@
-;; Version 2
-;; Introduces suitability of patches for initial seedings and biomass growth
-;; Adds competition (ver3??)
-;;
-;; Version 3
-;; Introduces mortality as increase probability > 50 years
-;; Include very low mortality for yonger trees
+;; New version of pjvegsim to include zone of influence equation
 
 globals
 [
   recruit-rate
-  dispersal-range
-  reproduction-age
-  age-of-death-mu
-  age-of-death-sigma
 ]
 
 patches-own
 [
-  suitability ;; Used to estimate establishment and growth rates
-  occupied? ;; Is there a tree here (speeds up some requests)
+  suitability
+  occupied?
 ]
 
 breed [trees tree]
-breed [people person]
 
 trees-own
 [
-  energy
-  height
   age
-  mortality-r
-  mortality-K
+  biomass-live
+  biomass-dead
+  height
+  area
   age-of-death
-  biomass-r
-  biomass-K
-  biomass
-  canopy
   dead?
 ]
 
@@ -43,10 +28,6 @@ to setup
   ca
 
   set recruit-rate 0.01 ;; chance of recruitment in next step
-  set dispersal-range 25 ;; Range for seed dispersal
-  set reproduction-age 25 ;; Age for seed production
-  set age-of-death-mu 500
-  set age-of-death-sigma 250
 
   ask patches [
     set suitability random-float 1
@@ -56,7 +37,7 @@ to setup
 
   ask n-of 10 patches [
     ;if random-float 1 < suitability [
-     make-a-tree
+    ;make-a-tree
     set occupied? false
     ;]
   ]
@@ -65,239 +46,34 @@ to setup
 end
 
 to go
-  if ticks > 1000 [
-    stop
-  ]
-  ask trees [
-  competition
-  if not dead?
-
-    [
-      grow-one-year
-      ;competition
-      if age > 25 [
-        reproduce
-      ]
-      if age > age-of-death [
-        ;ask patch-here [set occupied? false]
-        ;die
-        kill-tree
-      ]
-    ]
-  ]
-
-;  if max [age] of trees > reproduction-age
-;  [
-;    ask patches [
-;      if random-float 1 < suitability [
-;        recruit-trees
-;      ]
-;    ]
-;  ]
-  tick
-end
-
-to grow-one-year
-  set age age + 1
-  if age < 100 [
-    set height height + 0.1
-    let dbiomass biomass-r * biomass * (1 - biomass / biomass-K)
-    set biomass biomass + (dbiomass * [suitability] of patch-here)
-    set canopy (age / 100) * 10
-  ]
-  ;set mortality mortality-K / (1 + exp((-1 * mortality-r) * (age - 500)))
-  set size height
-end
-
-to competition
-  ask trees in-radius canopy
-  [
-    if biomass < [biomass] of myself
-    [
-      ;ask patch-here [set occupied? false]
-      die
-    ]
-  ]
-
-end
-
-to kill-tree
-  set dead? true
-  set color grey
-  ;print "I'm dying here"
-end
-
-to reproduce
-  let nseed random-poisson 10
-  repeat nseed [
-    let seed-target one-of patches in-radius dispersal-range with [occupied? = false]
-    if seed-target != nobody [
-      ask seed-target [
-        if random-float 1 < suitability [
-          make-a-tree
-          set occupied? true
-        ]
-      ]
-    ]
-  ]
-end
-
-to recruit-trees
-  if not any? trees-here ;; check 1 is the patch open?
-  [
-;    if (max [age] of trees in-radius dispersal-range > reproduction-age) [ ;; check 2 old enough
-      if random-float 1 < recruit-rate ;; check 3 success?
-      [
-        make-a-tree
-      ]
-;    ]
-  ]
-end
-
-to make-a-tree
-  sprout-trees 1 [
-    set age 0
-    set height 0.1
-    set shape "tree"
-    set size height
-    set color green
-    set canopy 0.01
-    ;set mortality-r 0.01
-    ;set mortality-K 0.05
-    set age-of-death random-normal age-of-death-mu age-of-death-sigma
-    if age-of-death < 1 [set age-of-death 1]
-    set biomass-r 0.1 * [suitability] of myself
-    set biomass-K 100 * [suitability] of myself
-    set biomass 0.1
-    set dead? false
-
-  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-275
-25
-774
-525
+210
+10
+647
+448
 -1
 -1
-4.96
+13.0
 1
 10
 1
 1
 1
 0
-0
-0
 1
--49
-49
--49
-49
+1
+1
+-16
+16
+-16
+16
 0
 0
 1
 ticks
 30.0
-
-BUTTON
-40
-40
-106
-73
-NIL
-setup
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-40
-86
-103
-119
-NIL
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-40
-125
-103
-158
-NIL
-go
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-PLOT
-10
-215
-210
-365
-Number of trees
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot count trees"
-
-PLOT
-5
-385
-205
-535
-Biomass
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot sum [biomass] of trees"
-
-MONITOR
-145
-120
-227
-165
-NIL
-count trees
-17
-1
-11
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -658,5 +434,5 @@ true
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 @#$#@#$#@
-1
+0
 @#$#@#$#@
