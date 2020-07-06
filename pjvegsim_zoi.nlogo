@@ -50,7 +50,7 @@ to setup
 end
 
 to go
-  if ticks > 100 [stop]
+  if ticks > 1000 [stop]
   ask trees
   [
     grow-tree
@@ -64,8 +64,8 @@ to grow-tree
   set biomass-live biomass-live + dbiomass
   ;set biomass-live biomass-live + dbiomass
   set area calc-area
-  set size area
-  ask patches in-radius area
+  set size calc-radius * 2
+  ask patches in-radius calc-radius
   [ set pcolor yellow ]
 end
 
@@ -75,7 +75,7 @@ to make-a-tree
     set height 0.1
     set biomass-live 0.01
     set biomass-dead 0
-    set biomass-max 10
+    set biomass-max 500
     set biomass-r 0.1
     set area calc-area
     set size 1 ;height
@@ -87,6 +87,10 @@ end
 
 to-report calc-area
   report c * biomass-live ^ (2 / 3)
+end
+
+to-report calc-radius
+  report sqrt area / pi
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
