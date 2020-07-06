@@ -17,8 +17,8 @@ globals
 
 patches-own
 [
-  suitability
-  occupied?
+  suitability ;; Used to estimate establishment and growth rates
+  occupied? ;; Is there a tree here (speeds up some requests)
 ]
 
 breed [trees tree]
@@ -36,6 +36,7 @@ trees-own
   biomass-K
   biomass
   canopy
+  dead?
 ]
 
 to setup
@@ -45,7 +46,7 @@ to setup
   set dispersal-range 25 ;; Range for seed dispersal
   set reproduction-age 25 ;; Age for seed production
   set age-of-death-mu 500
-  set age-of-death-sigma 100
+  set age-of-death-sigma 250
 
   ask patches [
     set suitability random-float 1
@@ -67,16 +68,21 @@ to go
   if ticks > 1000 [
     stop
   ]
-  ask trees
-  [
-    grow-one-year
-    competition
-    if age > 25 [
-      reproduce
-    ]
-    if age > age-of-death [
-      ask patch-here [set occupied? false]
-      die
+  ask trees [
+  if not dead?
+
+    [
+      grow-one-year
+      competition
+      if age > 25 [
+        reproduce
+      ]
+      if age > age-of-death [
+        ;ask patch-here [set occupied? false]
+        ;die
+        set dead? true
+        set color grey
+      ]
     ]
   ]
 
@@ -104,10 +110,11 @@ to grow-one-year
 end
 
 to competition
-  ask turtles in-radius canopy
+  ask  in-radius canopy
   [
     if biomass < [biomass] of myself
     [
+      ask patch-here [set occupied? false]
       die
     ]
   ]
@@ -155,13 +162,16 @@ to make-a-tree
     set height 0.1
     set shape "tree"
     set size height
+    set color green
     set canopy 0.01
     ;set mortality-r 0.01
     ;set mortality-K 0.05
     set age-of-death random-normal age-of-death-mu age-of-death-sigma
+    if age-of-death < 1 [set age-of-death 1]
     set biomass-r 0.1 * [suitability] of myself
     set biomass-K 100 * [suitability] of myself
     set biomass 0.1
+    set dead? false
 
   ]
 end
