@@ -39,7 +39,7 @@ to setup
     set occupied? false
   ]
 
-  ask n-of 1 patches [
+  ask n-of 2 patches [
     ;if random-float 1 < suitability [
     make-a-tree
     set occupied? false
@@ -50,19 +50,33 @@ to setup
 end
 
 to go
+  if ticks > 100 [stop]
+  ask trees
+  [
+    grow-tree
+  ]
+
+  tick
 end
 
-;to grow-tree
-;  dbiomass =
+to grow-tree
+  let dbiomass biomass-r * (area - (biomass-live ^ 2 / biomass-max ^ (4 / 3)))
+  ;set biomass-live biomass-live + ( dbiomass * [suitability] of patch-here )
+  set biomass-live biomass-live + dbiomass
+  set area calc-area
+  set size area
+  ask patches in-radius area
+  [ set pcolor yellow ]
+end
 
 to make-a-tree
   sprout-trees 1[
     set age 0
     set height 0.1
-    set biomass-live 1
+    set biomass-live 0.01
     set biomass-dead 0
-    set biomass-max 20000
-    set biomass-r 1
+    set biomass-max 10
+    set biomass-r 0.1
     set area calc-area
     set size 1 ;height
     set color green
@@ -110,6 +124,40 @@ BUTTON
 NIL
 setup\n
 NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+51
+111
+114
+144
+NIL
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+41
+165
+104
+198
+NIL
+go
+T
 1
 T
 OBSERVER
