@@ -35,9 +35,9 @@ to setup
     set occupied? false
   ]
 
-  ask n-of 10 patches [
+  ask n-of 1 patches [
     ;if random-float 1 < suitability [
-    ;make-a-tree
+    make-a-tree
     set occupied? false
     ;]
   ]
@@ -46,6 +46,19 @@ to setup
 end
 
 to go
+end
+
+to make-a-tree
+  sprout-trees 1[
+    set age 0
+    set height 0.1
+    set biomass-live 0.1
+    set biomass-dead 0
+    set area 0.1
+    set size 1 ;height
+    set color green
+    set dead? false
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -74,6 +87,23 @@ GRAPHICS-WINDOW
 1
 ticks
 30.0
+
+BUTTON
+37
+56
+103
+89
+NIL
+setup\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
