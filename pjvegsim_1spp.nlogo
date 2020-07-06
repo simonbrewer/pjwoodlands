@@ -69,19 +69,19 @@ to go
     stop
   ]
   ask trees [
+  competition
   if not dead?
 
     [
       grow-one-year
-      competition
+      ;competition
       if age > 25 [
         reproduce
       ]
       if age > age-of-death [
         ;ask patch-here [set occupied? false]
         ;die
-        set dead? true
-        set color grey
+        kill-tree
       ]
     ]
   ]
@@ -114,20 +114,19 @@ to competition
   [
     if biomass < [biomass] of myself
     [
-      ask patch-here [set occupied? false]
-      die
+      ;ask patch-here [set occupied? false]
+      ;die
+      kill-tree
     ]
   ]
 
 end
 
-;to death
-;  if random-float 1 < mortality
-;  [
-;    ;print "I'm dying here"
-;    die
-;  ]
-;end
+to kill-tree
+  set dead? true
+  set color grey
+  ;print "I'm dying here"
+end
 
 to reproduce
   let nseed random-poisson 10
