@@ -8,7 +8,7 @@ globals
 
 patches-own
 [
-  suitability
+  stress
   occupied?
 ]
 
@@ -34,13 +34,13 @@ to setup
   set c 1
 
   ask patches [
-    set suitability random-float 1
-    set pcolor scale-color gray suitability 0 1
+    set stress random-float 1
+    set pcolor scale-color gray stress 0 1
     set occupied? false
   ]
 
   ask n-of 2 patches [
-    ;if random-float 1 < suitability [
+    ;if random-float 1 < stress [
     make-a-tree
     set occupied? false
     ;]
@@ -60,9 +60,9 @@ to go
 end
 
 to grow-tree
-  let dbiomass biomass-r * (area - (biomass-live ^ 2 / biomass-max ^ (4 / 3)))
-  ;set biomass-live biomass-live + ( dbiomass * [suitability] of patch-here )
+  let dbiomass biomass-r * (area - (biomass-live ^ 2 / biomass-max ^ (4 / 3))) * (1 - stress)
   set biomass-live biomass-live + dbiomass
+  ;set biomass-live biomass-live + dbiomass
   set area calc-area
   set size area
   ask patches in-radius area
