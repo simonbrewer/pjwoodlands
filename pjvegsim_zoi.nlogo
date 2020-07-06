@@ -2,7 +2,8 @@
 
 globals
 [
-  recruit-rate
+  recruit-rate ;; chance of recruitment in next step
+  c ;; constant for canopy size
 ]
 
 patches-own
@@ -18,6 +19,8 @@ trees-own
   age
   biomass-live
   biomass-dead
+  biomass-max
+  biomass-r
   height
   area
   age-of-death
@@ -27,7 +30,8 @@ trees-own
 to setup
   ca
 
-  set recruit-rate 0.01 ;; chance of recruitment in next step
+  set recruit-rate 0.01
+  set c 1
 
   ask patches [
     set suitability random-float 1
@@ -48,17 +52,27 @@ end
 to go
 end
 
+;to grow-tree
+;  dbiomass =
+
 to make-a-tree
   sprout-trees 1[
     set age 0
     set height 0.1
-    set biomass-live 0.1
+    set biomass-live 1
     set biomass-dead 0
-    set area 0.1
+    set biomass-max 20000
+    set biomass-r 1
+    set area calc-area
     set size 1 ;height
     set color green
+    set shape "tree pine"
     set dead? false
   ]
+end
+
+to-report calc-area
+  report c * biomass-live ^ (2 / 3)
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -384,6 +398,14 @@ Circle -7500403 true true 65 21 108
 Circle -7500403 true true 116 41 127
 Circle -7500403 true true 45 90 120
 Circle -7500403 true true 104 74 152
+
+tree pine
+false
+0
+Rectangle -6459832 true false 120 225 180 300
+Polygon -7500403 true true 150 240 240 270 150 135 60 270
+Polygon -7500403 true true 150 75 75 210 150 195 225 210
+Polygon -7500403 true true 150 7 90 157 150 142 210 157 150 7
 
 triangle
 false
