@@ -10,6 +10,7 @@ patches-own
 [
   stress
   occupied?
+  trees-on-me
 ]
 
 breed [trees tree]
@@ -37,6 +38,7 @@ to setup
     set stress random-float 1
     set pcolor scale-color gray stress 0 1
     set occupied? false
+    set trees-on-me []
   ]
 
   ask n-of 2 patches [
@@ -61,12 +63,23 @@ end
 
 to grow-tree
   let dbiomass biomass-r * (area - (biomass-live ^ 2 / biomass-max ^ (4 / 3))) * (1 - stress)
+  show "d"
+  show dbiomass
+  show "l"
+  show biomass-live
+  show "m"
+  show biomass-max * stress
   set biomass-live biomass-live + dbiomass
   ;set biomass-live biomass-live + dbiomass
   set area calc-area
   set size calc-radius * 2
   ask patches in-radius calc-radius
-  [ set pcolor yellow ]
+  [
+    set pcolor yellow
+    if not member? myself trees-on-me [
+      set trees-on-me lput myself trees-on-me ;; stores trees overlapping patch
+    ]
+  ]
 end
 
 to make-a-tree
