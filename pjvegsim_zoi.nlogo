@@ -157,9 +157,9 @@ to-report calc-radius
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+476
 10
-647
+913
 448
 -1
 -1
@@ -170,8 +170,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -16
 16
@@ -233,6 +233,25 @@ NIL
 NIL
 NIL
 1
+
+PLOT
+13
+238
+352
+388
+Number of trees
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"live" 1.0 0 -10899396 true "" "plot count trees with [not dead?]"
+"dead" 1.0 0 -7500403 true "" "plot count trees with [dead?]"
 
 @#$#@#$#@
 ## WHAT IS IT?
