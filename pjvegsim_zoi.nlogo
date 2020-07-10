@@ -63,14 +63,7 @@ end
 
 to grow-tree
   let dbiomass biomass-r * (area - (biomass-live ^ 2 / biomass-max ^ (4 / 3))) * (1 - stress)
-  show "d"
-  show dbiomass
-  show "l"
-  show biomass-live
-  show "m"
-  show biomass-max * stress
   set biomass-live biomass-live + dbiomass
-  ;set biomass-live biomass-live + dbiomass
   set area calc-area
   set size calc-radius * 2
   ask patches in-radius calc-radius
