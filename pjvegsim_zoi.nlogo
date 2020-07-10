@@ -17,14 +17,21 @@ breed [trees tree]
 
 trees-own
 [
+  ;; Physical characteristics
   age
+  height
+  area
+  ;; Biomass
   biomass-live
   biomass-dead
   biomass-max
   biomass-r
-  height
-  area
-  age-of-death
+  dbiomass ;; biomass change this year
+  ;; Mortality
+  mort-alpha ;; low growth
+  mort-beta  ;; decay
+  mort-gamma ;; growth independent
+
   dead?
 ]
 
@@ -41,10 +48,10 @@ to setup
     set trees-on-me []
   ]
 
-  ask n-of 2 patches [
+  ask n-of 10 patches [
     ;if random-float 1 < stress [
     make-a-tree
-    set occupied? false
+    set occupied? true
     ;]
   ]
 
@@ -53,16 +60,18 @@ end
 
 to go
   if ticks > 1000 [stop]
-  ask trees
+  ask trees with [not dead?]
   [
     grow-tree
+    survival
+
   ]
 
   tick
 end
 
 to grow-tree
-  let dbiomass biomass-r * (area - (biomass-live ^ 2 / biomass-max ^ (4 / 3))) * (1 - stress)
+  set dbiomass biomass-r * (area - (biomass-live ^ 2 / biomass-max ^ (4 / 3))) * (1 - stress)
   set biomass-live biomass-live + dbiomass
   set area calc-area
   set size calc-radius * 2
@@ -79,16 +88,36 @@ to make-a-tree
   sprout-trees 1[
     set age 0
     set height 0.1
+
     set biomass-live 0.01
     set biomass-dead 0
     set biomass-max 500
     set biomass-r 0.1
     set area calc-area
+
+    set mort-alpha 0.004
+    set mort-beta 0.6
+    set mort-gamma 0.001
+
     set size 1 ;height
     set color green
     set shape "tree pine"
     set dead? false
   ]
+end
+
+to survival
+  let mort-prob mortality
+  if random-float 1 < mort-prob [
+    print "I'm dying here"
+    show ticks
+    show mort-prob
+    set color gray
+    set dead? true
+  ]
+end
+to-report mortality
+  report mort-gamma + mort-alpha * exp(-1 * mort-beta * dbiomass)
 end
 
 to-report calc-area
