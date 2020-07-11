@@ -11,6 +11,7 @@ patches-own
   stress
   occupied?
   trees-on-me
+  biomass-on-me
 ]
 
 breed [trees tree]
@@ -36,6 +37,8 @@ trees-own
   seed-mu
   seed-sigma
 
+  my-patches
+
   dead?
 ]
 
@@ -49,7 +52,9 @@ to setup
     set stress random-float 1
     set pcolor scale-color gray stress 0 1
     set occupied? false
-    set trees-on-me []
+    ;set trees-on-me []
+    set trees-on-me no-turtles
+    set biomass-on-me 0
   ]
 
   ask n-of 10 patches [
@@ -71,6 +76,12 @@ to go
     reproduce
   ]
 
+  harvest-trees
+
+  ask patches with [occupied?]
+  [
+    set biomass-on-me sum [biomass-live] of trees-on-me
+  ]
   tick
 end
 
@@ -80,12 +91,14 @@ to grow-tree
   set biomass-live biomass-live + dbiomass
   set area calc-area
   set size calc-radius * 2
+  set my-patches patches in-radius calc-radius
   ask patches in-radius calc-radius
   [
     set pcolor yellow
-    if not member? myself trees-on-me [
-      set trees-on-me lput myself trees-on-me ;; stores trees overlapping patch
-    ]
+    ;if not member? myself trees-on-me [
+      ;set trees-on-me lput myself trees-on-me ;; stores trees overlapping patch
+      set trees-on-me (turtle-set myself trees-on-me) ;; stores trees overlapping patch
+    ;]
   ]
 end
 
@@ -100,9 +113,9 @@ to make-a-tree
     set biomass-r 0.1
     set area calc-area
 
-    set mort-alpha 0.001
+    set mort-alpha 0.0005
     set mort-beta 0.6
-    set mort-gamma 0.0005
+    set mort-gamma 0.00025
 
     set seed-min 25
     set seed-mu 180
@@ -112,15 +125,17 @@ to make-a-tree
     set color green
     set shape "tree pine"
     set dead? false
+    ;set my-patches []
+    ;set my-patches lput patch-here my-patches
   ]
 end
 
 to survival
   let mort-prob mortality
   if random-float 1 < mort-prob [
-    print "I'm dying here"
-    show ticks
-    show mort-prob
+;    print "I'm dying here"
+;    show ticks
+;    show mort-prob
     set color gray
     set dead? true
     ask patches in-radius calc-radius
@@ -142,6 +157,20 @@ to reproduce
     ]
   ]
 
+end
+
+to harvest-trees
+  ask trees with [dead?] ;; harvesting
+  [
+    if random-float 1 < 0.001
+    [
+      ask patch-here [
+        set occupied? false
+        ;set pcolor red
+      ]
+      die
+    ]
+  ]
 end
 
 to-report mortality
