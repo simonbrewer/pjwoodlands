@@ -2,7 +2,7 @@ library(ggpubr)
 
 ###############################################################################
 
-b = 1
+b = 0.15
 
 biomassA = 1
 biomassB = seq(1,1000)
@@ -17,3 +17,4 @@ for (i in 1:nB) {
 data.frame(A = propA, biomassB) %>%
   ggline(x = "A", y = "biomassB", 
          numeric.x.axis = TRUE)
+

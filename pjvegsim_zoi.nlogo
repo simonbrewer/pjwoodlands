@@ -126,9 +126,9 @@ to make-a-tree
     set stress [pstress] of patch-here
     set area calc-area
 
-    set mort-alpha 0.0005
+    set mort-alpha 0.001
     set mort-beta 0.6
-    set mort-gamma 0.00025
+    set mort-gamma 0.0005
 
     set seed-min 25
     set seed-mu 180
@@ -223,11 +223,11 @@ end
 GRAPHICS-WINDOW
 476
 10
-913
-448
+880
+415
 -1
 -1
-13.0
+4.0
 1
 10
 1
@@ -237,10 +237,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--16
-16
--16
-16
+-49
+49
+-49
+49
 0
 0
 1
@@ -328,7 +328,7 @@ NIL
 0.0
 10.0
 0.0
-10.0
+1.0
 true
 false
 "" ""
