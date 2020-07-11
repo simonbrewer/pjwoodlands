@@ -4,6 +4,10 @@ globals
 [
   recruit-rate ;; chance of recruitment in next step
   c ;; constant for canopy size
+  b ;; exponent for size asymmetric competition
+    ;; 0 = complete symmetry (equal split)
+    ;; 1 = perfect symmetry (proportional to biomass;
+    ;; inf = complete size asymmetry (largest takes all)
 ]
 
 patches-own
@@ -47,6 +51,7 @@ to setup
 
   set recruit-rate 0.01
   set c 1
+  set b 0
 
   ask patches [
     set stress random-float 1
@@ -78,7 +83,7 @@ to go
 
   harvest-trees
 
-  ask patches with [occupied?]
+  ask patches with [occupied?] ;; store biomass on patch for competition
   [
     set biomass-on-me sum [biomass-live] of trees-on-me
   ]
