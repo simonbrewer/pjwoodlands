@@ -12,7 +12,7 @@ globals
 
 patches-own
 [
-  stress
+  pstress
   occupied?
   trees-on-me
   biomass-on-me
@@ -26,16 +26,20 @@ trees-own
   age
   height
   area
+  stress
+
   ;; Biomass
   biomass-live
   biomass-dead
   biomass-max
   biomass-r
   dbiomass ;; biomass change this year
+
   ;; Mortality
   mort-alpha ;; low growth
   mort-beta  ;; decay
   mort-gamma ;; growth independent
+
   ;; Reproduction
   seed-min
   seed-mu
@@ -51,11 +55,11 @@ to setup
 
   set recruit-rate 0.01
   set c 1
-  set b 0
+  set b 1
 
   ask patches [
-    set stress random-float 1
-    set pcolor scale-color gray stress 0 1
+    set pstress random-float 1
+    set pcolor scale-color gray pstress 0 1
     set occupied? false
     ;set trees-on-me []
     set trees-on-me no-turtles
@@ -63,7 +67,7 @@ to setup
   ]
 
   ask n-of 10 patches [
-    ;if random-float 1 < stress [
+    ;if random-float 1 < pstress [
     make-a-tree
     set occupied? true
     ;]
@@ -73,26 +77,27 @@ to setup
 end
 
 to go
-  if ticks > 1000 [stop]
+  if ticks > 500 [stop]
   ask trees with [not dead?]
   [
     grow-tree
     survival
-    reproduce
+    if age > 25 [ reproduce ]
   ]
 
   harvest-trees
 
-  ask patches with [occupied?] ;; store biomass on patch for competition
+  ask patches ;with [occupied?] ;; store biomass on patch for competition
   [
     set biomass-on-me sum [biomass-live] of trees-on-me
   ]
+
   tick
 end
 
 to grow-tree
   set age age + 1
-  set dbiomass biomass-r * (area - (biomass-live ^ 2 / biomass-max ^ (4 / 3))) * (1 - stress)
+  set dbiomass biomass-r * (area - (biomass-live ^ 2 / biomass-max ^ (4 / 3))) * (1 - pstress)
   set biomass-live biomass-live + dbiomass
   set area calc-area
   set size calc-radius * 2
@@ -105,6 +110,7 @@ to grow-tree
       set trees-on-me (turtle-set myself trees-on-me) ;; stores trees overlapping patch
     ;]
   ]
+  ;set stress calc-stress
 end
 
 to make-a-tree
@@ -116,6 +122,8 @@ to make-a-tree
     set biomass-dead 0
     set biomass-max 500
     set biomass-r 0.1
+
+    set stress [pstress] of patch-here
     set area calc-area
 
     set mort-alpha 0.0005
@@ -141,11 +149,11 @@ to survival
 ;    print "I'm dying here"
 ;    show ticks
 ;    show mort-prob
-    set color gray
+    set color black
     set dead? true
     ask patches in-radius calc-radius
     [
-      set pcolor scale-color gray stress 0 1
+      set pcolor scale-color gray pstress 0 1
     ]
   ]
 end
@@ -180,6 +188,28 @@ end
 
 to-report mortality
   report mort-gamma + mort-alpha * exp(-1 * mort-beta * dbiomass)
+end
+
+to-report calc-stress
+  let npatch 0
+  let prop 0
+  let tmp-stress 0
+  let tmp-stressf 0
+  ask my-patches [
+    set prop prop + [biomass-live] of myself / biomass-on-me
+    set tmp-stress tmp-stress + (pstress * ([biomass-live] of myself / biomass-on-me))
+    set tmp-stressf tmp-stressf + pstress
+    set npatch npatch + 1
+  ]
+  show prop
+  show npatch
+  show prop / npatch
+  show tmp-stress
+  show tmp-stressf
+  report tmp-stress / npatch
+end
+
+to-report calc-area-symm
 end
 
 to-report calc-area
@@ -286,6 +316,24 @@ true
 PENS
 "live" 1.0 0 -10899396 true "" "plot count trees with [not dead?]"
 "dead" 1.0 0 -7500403 true "" "plot count trees with [dead?]"
+
+PLOT
+196
+39
+396
+189
+plot 1
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot [stress] of tree 0"
 
 @#$#@#$#@
 ## WHAT IS IT?
