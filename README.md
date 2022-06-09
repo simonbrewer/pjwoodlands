@@ -1,18 +1,11 @@
 # pjwoodlands
 
-Simple NetLogo models to simulate the growth of a forest. 
+Simple NetLogo models to simulate the growth of a pinyon-juniper woodland. 
 
 The aims are:
 
 - To have trees that accumulate biomass
-- Competition between individuals
-- Recruitment
-- Loss through mortality or harvesting
+- Tress that die and leave standing or fallen biomass
+- Recruitment into empty patches
 
-V1: Simple binary suitability and growth
-
-V2: Added continuous suitability and biomass driven competition
-
-V3: Added mortality
-
-Have dropped versioning numbers with the moved to GitHub 
+Updated, simplified version with simple growth/biomass model
