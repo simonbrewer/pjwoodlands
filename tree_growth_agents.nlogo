@@ -8,6 +8,7 @@ turtles-own [
   age
   biomass
   live?
+  standing?
   reproductive-age
   age-since-death
 ]
@@ -44,26 +45,8 @@ to setup
 
   ask n-of n-initial-trees patches [
     ifelse suitability-juniper > suitability-pine
-    [
-      sprout-junipers 1 [
-        set age 0
-        set reproductive-age 30
-        set biomass 0
-        set live? true
-        set color 53
-        set size 1
-      ]
-    ]
-    [
-      sprout-pines 1 [
-        set age 0
-        set reproductive-age 20
-        set biomass 0
-        set live? true
-        set color 57
-        set size 1
-      ]
-    ]
+    [ recruit-juniper ]
+    [ recruit-pine ]
     set occupied? true
   ]
 
@@ -112,14 +95,7 @@ to reproduce
   ifelse breed = pines [
     ask one-of neighbors with [not occupied?] [
       if random-float 1 < suitability-pine [
-        sprout-pines 1 [
-          set age 0
-          set reproductive-age 20
-          set biomass 0
-          set live? true
-          set color 57
-          set size 1
-        ]
+        recruit-pine
         set pcolor black
         set occupied? true
       ]
@@ -128,14 +104,7 @@ to reproduce
   [
     ask one-of neighbors with [not occupied?] [
       if random-float 1 < suitability-juniper [
-        sprout-junipers 1 [
-          set age 0
-          set reproductive-age 30
-          set biomass 0
-          set live? true
-          set color 53
-          set size 1
-        ]
+        recruit-juniper
         set pcolor black
         set occupied? true
       ]
@@ -187,6 +156,28 @@ to fire
       ]
       die
     ]
+  ]
+end
+
+to recruit-pine
+  sprout-pines 1 [
+    set age 0
+    set reproductive-age 20
+    set biomass 0
+    set live? true
+    set color 57
+    set size 1
+  ]
+end
+
+to recruit-juniper
+  sprout-junipers 1 [
+    set age 0
+    set reproductive-age 30
+    set biomass 0
+    set live? true
+    set color 53
+    set size 1
   ]
 end
 
