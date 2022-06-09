@@ -7,10 +7,14 @@ globals [
 turtles-own [
   age
   biomass
+  max-live-biomass
   live?
   standing?
   reproductive-age
   age-since-death
+  decay-rate-standing
+  decay-rate-fallen
+  pfall ;; probability of falling once dead
 ]
 
 breed [pines pine]
@@ -62,10 +66,19 @@ to go
     ]
     death
   ]
-  ask turtles with [not live?] [
+  ;; Disturb trees
+  ask turtles with [not live? and standing?] [
     disturbance
     ;harvest
     set age-since-death age-since-death + 1
+  ]
+  ;; Decay trees
+  ask turtles with [not live? and standing?] [
+    decay-standing
+  ]
+  ;; Decay trees
+  ask turtles with [not live? and not standing?] [
+    decay-fallen
   ]
 
   if fires? [
@@ -123,27 +136,34 @@ to death
   ]
 
   if random-float 1 < pdeath [
-    ifelse random-float 1 < 0.25 [
-      set live? false
-      set age-since-death 0
-      set color gray
-    ]
-    [
-      ask patch-here [ set occupied? false ]
-      die
-    ]
+    set live? false
+    set age-since-death 0
+    set max-live-biomass biomass
+    set color gray
   ]
 
 end
 
 to disturbance
-
-  let pfall (age-since-death / max-age-standing-dead) ^ 2
   if random-float 1 < pfall [
-    ask patch-here [ set occupied? false ]
-    die
+    set standing? false
+    set shape "logs"
   ]
 
+;  let pfall (age-since-death / max-age-standing-dead) ^ 2
+;  if random-float 1 < pfall [
+;    ask patch-here [ set occupied? false ]
+;    die
+;  ]
+
+end
+
+to decay-standing
+  set biomass biomass * (1 - decay-rate-standing)
+end
+
+to decay-fallen
+  set biomass biomass * (1 - decay-rate-fallen)
 end
 
 to fire
@@ -163,8 +183,12 @@ to recruit-pine
   sprout-pines 1 [
     set age 0
     set reproductive-age 20
+    set decay-rate-standing 0.1
+    set decay-rate-fallen 0.5
+    set pfall 0.25
     set biomass 0
     set live? true
+    set standing? true
     set color 57
     set size 1
   ]
@@ -174,8 +198,12 @@ to recruit-juniper
   sprout-junipers 1 [
     set age 0
     set reproductive-age 30
+    set decay-rate-standing 0.1
+    set decay-rate-fallen 0.5
+    set pfall 0.25
     set biomass 0
     set live? true
+    set standing? true
     set color 53
     set size 1
   ]
@@ -313,7 +341,7 @@ SWITCH
 188
 fires?
 fires?
-0
+1
 1
 -1000
 
@@ -567,6 +595,34 @@ line half
 true
 0
 Line -7500403 true 150 0 150 150
+
+logs
+false
+0
+Polygon -7500403 true true 15 241 75 271 89 245 135 271 150 246 195 271 285 121 235 96 255 61 195 31 181 55 135 31 45 181 49 183
+Circle -1 true false 132 222 66
+Circle -16777216 false false 132 222 66
+Circle -1 true false 72 222 66
+Circle -1 true false 102 162 66
+Circle -7500403 true true 222 72 66
+Circle -7500403 true true 192 12 66
+Circle -7500403 true true 132 12 66
+Circle -16777216 false false 102 162 66
+Circle -16777216 false false 72 222 66
+Circle -1 true false 12 222 66
+Circle -16777216 false false 30 240 30
+Circle -1 true false 42 162 66
+Circle -16777216 false false 42 162 66
+Line -16777216 false 195 30 105 180
+Line -16777216 false 255 60 165 210
+Circle -16777216 false false 12 222 66
+Circle -16777216 false false 90 240 30
+Circle -16777216 false false 150 240 30
+Circle -16777216 false false 120 180 30
+Circle -16777216 false false 60 180 30
+Line -16777216 false 195 270 285 120
+Line -16777216 false 15 240 45 180
+Line -16777216 false 45 180 135 30
 
 pentagon
 false
