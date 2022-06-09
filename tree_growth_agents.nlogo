@@ -81,6 +81,9 @@ to go
     decay-fallen
   ]
 
+  ask turtles with [not live?] [
+    remove-trees
+  ]
   if fires? [
     if random-float 1 < (1 / fire-return-time)
     [
@@ -166,6 +169,13 @@ to decay-fallen
   set biomass biomass * (1 - decay-rate-fallen)
 end
 
+to remove-trees
+  if biomass / max-live-biomass < 0.1 [
+    ask patch-here [ set occupied? false ]
+    die
+  ]
+end
+
 to fire
   ask one-of patches with [occupied?] [
     let tmp-size random-poisson fire-size
@@ -183,8 +193,8 @@ to recruit-pine
   sprout-pines 1 [
     set age 0
     set reproductive-age 20
-    set decay-rate-standing 0.1
-    set decay-rate-fallen 0.5
+    set decay-rate-standing 0.01
+    set decay-rate-fallen 0.1
     set pfall 0.25
     set biomass 0
     set live? true
@@ -198,8 +208,8 @@ to recruit-juniper
   sprout-junipers 1 [
     set age 0
     set reproductive-age 30
-    set decay-rate-standing 0.1
-    set decay-rate-fallen 0.5
+    set decay-rate-standing 0.01
+    set decay-rate-fallen 0.1
     set pfall 0.25
     set biomass 0
     set live? true
@@ -224,11 +234,11 @@ end
 GRAPHICS-WINDOW
 210
 10
-734
-535
+738
+539
 -1
 -1
-4.0
+8.0
 1
 10
 1
@@ -239,9 +249,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-128
+64
 0
-128
+64
 0
 0
 1
