@@ -43,8 +43,10 @@ to setup
 
   ask patches [
     set soil-moisture random-float 10 * (pycor / max-pycor)
-    set suitability-pine random-float 1 * (pycor / max-pycor)
-    set suitability-juniper random-float 1 * (( max-pycor - pycor) / max-pycor)
+    set max-suitability-pine random-float 1 * (pycor / max-pycor)
+    set suitability-pine max-suitability-pine
+    set max-suitability-juniper random-float 1 * (( max-pycor - pycor) / max-pycor)
+    set suitability-juniper max-suitability-juniper
     ;set pcolor scale-color blue suitability-juniper 0 1
     ;set pcolor scale-color green suitability-pine 0 1
     set occupied? false
@@ -61,6 +63,8 @@ to setup
 end
 
 to go
+
+  if not any? turtles [stop]
   ask turtles with [live?] [
   ;ask turtles  [
     grow
@@ -148,6 +152,11 @@ to death
     set color gray
   ]
 
+  ask patch-here [
+    set suitability-pine 0
+    set suitability-juniper 0
+  ]
+
 end
 
 to disturbance
@@ -155,13 +164,6 @@ to disturbance
     set standing? false
     set shape "logs"
   ]
-
-;  let pfall (age-since-death / max-age-standing-dead) ^ 2
-;  if random-float 1 < pfall [
-;    ask patch-here [ set occupied? false ]
-;    die
-;  ]
-
 end
 
 to decay-standing
@@ -239,11 +241,11 @@ end
 GRAPHICS-WINDOW
 210
 10
-738
-539
+746
+1059
 -1
 -1
-8.0
+16.0
 1
 10
 1
@@ -254,7 +256,7 @@ GRAPHICS-WINDOW
 0
 1
 0
-64
+32
 0
 64
 0
@@ -343,7 +345,7 @@ n-initial-trees
 n-initial-trees
 0
 500
-500.0
+30.0
 1
 1
 NIL
