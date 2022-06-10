@@ -293,10 +293,10 @@ NIL
 1
 
 PLOT
-790
-25
-990
-175
+765
+10
+965
+160
 Live biomass
 NIL
 NIL
@@ -312,10 +312,10 @@ PENS
 "juniper" 1.0 0 -13210332 true "" "plot biomass-juniper"
 
 PLOT
-792
-218
-992
-368
+765
+175
+965
+325
 Dead biomass
 NIL
 NIL
@@ -386,10 +386,10 @@ NIL
 HORIZONTAL
 
 PLOT
-770
-395
-970
-545
+765
+340
+965
+490
 plot 1
 NIL
 NIL
@@ -401,7 +401,8 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot count pines with [not live?]"
+"default" 1.0 0 -16777216 true "" "plot count turtles with [not live? and standing?]"
+"pen-1" 1.0 0 -7500403 true "" "plot count turtles with [not live? and not standing?]"
 
 @#$#@#$#@
 ## WHAT IS IT?
