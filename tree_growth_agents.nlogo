@@ -7,7 +7,8 @@ globals [
 turtles-own [
   age
   biomass
-  max-live-biomass
+  max-dbiomass ;; Maximum annual biomass accumulation
+  max-live-biomass ;; Max total biomass
   live?
   standing?
   reproductive-age
@@ -27,6 +28,8 @@ patches-own [
   soil-moisture ;; factor to control suitability
   suitability-pine
   suitability-juniper
+  max-suitability-pine
+  max-suitability-juniper
 ]
 
 to setup
@@ -96,9 +99,9 @@ end
 to grow
   let dbiomass 0
   ifelse breed = pines [
-    set dbiomass 1
+    set dbiomass max-dbiomass * [suitability-pine] of patch-here
   ] [
-    set dbiomass 0.1
+    set dbiomass max-dbiomass * [suitability-juniper] of patch-here
   ]
   set age age + 1
   if age > reproductive-age [
@@ -197,6 +200,7 @@ to recruit-pine
     set decay-rate-fallen 0.1
     set pfall 0.25
     set biomass 0
+    set max-dbiomass 1
     set live? true
     set standing? true
     set color 57
@@ -212,6 +216,7 @@ to recruit-juniper
     set decay-rate-fallen 0.1
     set pfall 0.25
     set biomass 0
+    set max-dbiomass 0.25
     set live? true
     set standing? true
     set color 53
