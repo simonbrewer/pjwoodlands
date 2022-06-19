@@ -188,12 +188,37 @@ to decay-standing
   ;print "Suitability"
   ;ask patch-here [ print suitability-pine ]
   ;ask patch-here [ print max-suitability-pine * [decay-rate-standing] of myself]
+  ;; Return rate
+  let return-rate (biomass * decay-rate-standing) / max-live-biomass
+;  print "-----------------------------------------------"
+;  print "RR"
+;  print biomass
+;  print decay-rate-standing
+;  print max-live-biomass
+;  print return-rate
+;  print "-----------------------------------------------"
+;  print "Suitability"
+;  ask patch-here [ print suitability-pine ]
+;  ask patch-here [ print max-suitability-pine ]
+  ask patch-here [
+    set suitability-pine suitability-pine + ( return-rate * max-suitability-pine )
+    set suitability-juniper suitability-juniper + ( return-rate * max-suitability-juniper )
+  ]
+
+;  ask patch-here [ print suitability-pine ]
+;  ask patch-here [ print max-suitability-pine ]
+;  print "-----------------------------------------------"
   set biomass biomass * (1 - decay-rate-standing)
   ;print biomass
 end
 
 to decay-fallen
   ;;print (biomass * (1 - decay-rate-fallen)) / max-live-biomass
+  let return-rate (biomass * decay-rate-fallen) / max-live-biomass
+  ask patch-here [
+    set suitability-pine suitability-pine + ( return-rate * max-suitability-pine )
+    set suitability-juniper suitability-juniper + ( return-rate * max-suitability-juniper )
+  ]
   set biomass biomass * (1 - decay-rate-fallen)
 end
 
