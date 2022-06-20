@@ -460,11 +460,11 @@ PENS
 "pen-1" 1.0 0 -7500403 true "" "plot count turtles with [not live? and not standing?]"
 
 PLOT
-20
+5
 355
-220
+205
 505
-plot 2
+Suitability (16 16)
 NIL
 NIL
 0.0
