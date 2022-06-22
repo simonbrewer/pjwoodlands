@@ -68,6 +68,7 @@ to go
 
   if not any? turtles [stop]
   if flag = 1 [stop]
+  ;;if (any? patches with [count turtles-here > 1]) [stop]
   ask turtles with [live?] [
   ;ask turtles  [
     grow
@@ -169,6 +170,7 @@ to death
     set age-since-death 0
     set max-live-biomass biomass
     set color gray
+    ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
   ]
 
 end
@@ -214,7 +216,7 @@ end
 
 to decay-fallen
   ;;print (biomass * (1 - decay-rate-fallen)) / max-live-biomass
-  let return-rate (biomass * decay-rate-standing) / max-live-biomass
+  let return-rate (biomass * decay-rate-fallen) / max-live-biomass
   ask patch-here [
     set suitability-pine suitability-pine + ( return-rate * max-suitability-pine )
     set suitability-juniper suitability-juniper + ( return-rate * max-suitability-juniper )
@@ -224,7 +226,7 @@ end
 
 to remove-trees
   if biomass / max-live-biomass < 0.1 [
-    ask patch-here [ set occupied? false ]
+    ;ask patch-here [ set occupied? false ]
     die
   ]
 end
@@ -314,10 +316,10 @@ ticks
 30.0
 
 BUTTON
-27
-59
-93
-92
+30
+10
+96
+43
 NIL
 setup
 NIL
@@ -331,10 +333,10 @@ NIL
 1
 
 BUTTON
-103
-59
-166
-92
+106
+10
+169
+43
 NIL
 go
 T
@@ -385,10 +387,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot biomass-dead"
 
 SLIDER
-15
-100
-187
-133
+18
+51
+190
+84
 n-initial-trees
 n-initial-trees
 0
@@ -400,10 +402,10 @@ NIL
 HORIZONTAL
 
 SWITCH
-45
-155
-148
-188
+48
+106
+151
+139
 fires?
 fires?
 1
@@ -411,10 +413,10 @@ fires?
 -1000
 
 SLIDER
-13
-196
-185
-229
+16
+147
+188
+180
 fire-return-time
 fire-return-time
 0
@@ -426,15 +428,15 @@ NIL
 HORIZONTAL
 
 SLIDER
-13
-234
+16
 185
-267
+188
+218
 fire-size
 fire-size
 0
 20
-10.0
+2.0
 1
 1
 NIL
@@ -460,11 +462,11 @@ PENS
 "pen-1" 1.0 0 -7500403 true "" "plot count turtles with [not live? and not standing?]"
 
 PLOT
-20
-355
-220
-505
-plot 2
+5
+230
+205
+380
+Suitability (16 16)
 NIL
 NIL
 0.0
@@ -477,6 +479,24 @@ false
 PENS
 "default" 1.0 0 -6565750 true "" "plot [suitability-pine] of patch 16 16"
 "pen-1" 1.0 0 -13210332 true "" "plot [suitability-juniper] of patch 16 16"
+
+PLOT
+10
+410
+210
+560
+plot 2
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot [max-suitability-pine - suitability-pine] of patch 16 16 "
 
 @#$#@#$#@
 ## WHAT IS IT?

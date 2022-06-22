@@ -68,6 +68,7 @@ to go
 
   if not any? turtles [stop]
   if flag = 1 [stop]
+  ;;if (any? patches with [count turtles-here > 1]) [stop]
   ask turtles with [live?] [
   ;ask turtles  [
     grow
@@ -169,6 +170,7 @@ to death
     set age-since-death 0
     set max-live-biomass biomass
     set color gray
+    ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
   ]
 
 end
@@ -224,7 +226,7 @@ end
 
 to remove-trees
   if biomass / max-live-biomass < 0.1 [
-    ask patch-here [ set occupied? false ]
+    ;ask patch-here [ set occupied? false ]
     die
   ]
 end
@@ -289,11 +291,11 @@ end
 GRAPHICS-WINDOW
 210
 10
-746
-547
+762
+563
 -1
 -1
-16.0
+32.0
 1
 10
 1
@@ -304,9 +306,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-32
+16
 0
-32
+16
 0
 0
 1
@@ -434,7 +436,7 @@ fire-size
 fire-size
 0
 20
-10.0
+2.0
 1
 1
 NIL
