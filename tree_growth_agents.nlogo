@@ -83,13 +83,10 @@ to go
     ;harvest
     set age-since-death age-since-death + 1
   ]
+
   ;; Decay trees
-  ask turtles with [not live? and standing?] [
-    decay-standing
-  ]
-  ;; Decay trees
-  ask turtles with [not live? and not standing?] [
-    decay-fallen
+  ask turtles with [not live?] [
+    decay
   ]
 
   ask turtles with [not live?] [
@@ -182,46 +179,20 @@ to disturbance
   ]
 end
 
-to decay-standing
-  ;print "Biomass"
-  ;print biomass
-  ;print max-live-biomass
-  ;print (biomass * (1 - decay-rate-standing)) / max-live-biomass
-  ;print "Suitability"
-  ;ask patch-here [ print suitability-pine ]
-  ;ask patch-here [ print max-suitability-pine * [decay-rate-standing] of myself]
+to decay ;; combined decay function
   ;; Return rate
-  let return-rate (biomass * decay-rate-standing) / max-live-biomass
-;  print "-----------------------------------------------"
-;  print "RR"
-;  print biomass
-;  print decay-rate-standing
-;  print max-live-biomass
-;  print return-rate
-;  print "-----------------------------------------------"
-;  print "Suitability"
-;  ask patch-here [ print suitability-pine ]
-;  ask patch-here [ print max-suitability-pine ]
+  let return-rate 0
+  ifelse standing? [
+    set return-rate (biomass * decay-rate-standing) / max-live-biomass
+    set biomass biomass * (1 - decay-rate-standing)
+  ] [
+    set return-rate (biomass * decay-rate-fallen) / max-live-biomass
+    set biomass biomass * (1 - decay-rate-fallen)
+  ]
   ask patch-here [
     set suitability-pine suitability-pine + ( return-rate * max-suitability-pine )
     set suitability-juniper suitability-juniper + ( return-rate * max-suitability-juniper )
   ]
-
-;  ask patch-here [ print suitability-pine ]
-;  ask patch-here [ print max-suitability-pine ]
-;  print "-----------------------------------------------"
-  set biomass biomass * (1 - decay-rate-standing)
-  ;print biomass
-end
-
-to decay-fallen
-  ;;print (biomass * (1 - decay-rate-fallen)) / max-live-biomass
-  let return-rate (biomass * decay-rate-fallen) / max-live-biomass
-  ask patch-here [
-    set suitability-pine suitability-pine + ( return-rate * max-suitability-pine )
-    set suitability-juniper suitability-juniper + ( return-rate * max-suitability-juniper )
-  ]
-  set biomass biomass * (1 - decay-rate-fallen)
 end
 
 to remove-trees
@@ -291,11 +262,11 @@ end
 GRAPHICS-WINDOW
 210
 10
-762
-563
+746
+547
 -1
 -1
-32.0
+16.0
 1
 10
 1
@@ -306,9 +277,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-16
+32
 0
-16
+32
 0
 0
 1
@@ -316,10 +287,10 @@ ticks
 30.0
 
 BUTTON
-27
-59
-93
-92
+30
+10
+96
+43
 NIL
 setup
 NIL
@@ -333,10 +304,10 @@ NIL
 1
 
 BUTTON
-103
-59
-166
-92
+106
+10
+169
+43
 NIL
 go
 T
@@ -387,10 +358,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot biomass-dead"
 
 SLIDER
-15
-100
-187
-133
+18
+51
+190
+84
 n-initial-trees
 n-initial-trees
 0
@@ -402,10 +373,10 @@ NIL
 HORIZONTAL
 
 SWITCH
-45
-155
-148
-188
+48
+106
+151
+139
 fires?
 fires?
 1
@@ -413,10 +384,10 @@ fires?
 -1000
 
 SLIDER
-13
-196
-185
-229
+16
+147
+188
+180
 fire-return-time
 fire-return-time
 0
@@ -428,10 +399,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-13
-234
+16
 185
-267
+188
+218
 fire-size
 fire-size
 0
@@ -463,9 +434,9 @@ PENS
 
 PLOT
 5
-355
+230
 205
-505
+380
 Suitability (16 16)
 NIL
 NIL
@@ -479,6 +450,24 @@ false
 PENS
 "default" 1.0 0 -6565750 true "" "plot [suitability-pine] of patch 16 16"
 "pen-1" 1.0 0 -13210332 true "" "plot [suitability-juniper] of patch 16 16"
+
+PLOT
+10
+410
+210
+560
+plot 2
+NIL
+NIL
+0.0
+10.0
+-0.2
+0.2
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot [max-suitability-pine - suitability-pine] of patch 16 16 "
 
 @#$#@#$#@
 ## WHAT IS IT?
