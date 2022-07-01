@@ -3,12 +3,79 @@ globals [
   diam-lrc-mean
   diam-asym-sd
   diam-lrc-sd
+  diam-asym-wc
+  diam-lrc-wc
+
+  log-wc-mean
+  log-wc-sd
 ]
 
 turtles-own [
+  diam
   diam-asym
   diam-lrc
+  age
 ]
+
+patches-own [
+  wc
+]
+
+to setup
+  ca
+
+  set-params
+
+  ask patches [
+    set pcolor white
+    set wc exp random-normal log-wc-mean log-wc-sd
+  ]
+  ask n-of 4 patches [
+    sprout 1 [
+      set shape "tree"
+      let tmp-asym-mean diam-asym-mean + diam-asym-wc * [wc] of patch-here
+      set diam-asym random-normal tmp-asym-mean diam-asym-sd
+      let tmp-lrc-mean diam-lrc-mean + diam-lrc-wc * [wc] of patch-here
+      set diam-lrc random-normal tmp-lrc-mean diam-lrc-sd
+      set age 1
+    ]
+  ]
+
+  stop-inspecting-dead-agents
+  inspect turtle 0
+  reset-ticks
+end
+
+to go
+  if ticks > 50 [stop]
+  ask turtles [
+    set age age + 1
+    calc-diameter
+  ]
+  tick
+end
+
+to set-params
+  ;; wc values from Guess
+  set log-wc-mean -1.939
+  set log-wc-sd 0.562
+
+  ;; Parameters derived from NLME equations
+  set diam-asym-mean 0.145
+  set diam-asym-sd 0.078
+  set diam-asym-wc 0.029
+
+  set diam-lrc-mean -3.57
+  set diam-lrc-sd 0.976
+  set diam-lrc-wc -0.215
+
+end
+
+to calc-diameter
+  ;; Equation from https://stat.ethz.ch/R-manual/R-devel/library/stats/html/SSasympOrig.html
+  ;; Asym*(1 - exp(-exp(lrc)*input))
+  set diam diam-asym * ( 1 - exp(- exp( diam-lrc ) * age ))
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -36,6 +103,76 @@ GRAPHICS-WINDOW
 1
 ticks
 30.0
+
+BUTTON
+41
+56
+107
+89
+NIL
+setup\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+PLOT
+2
+298
+202
+448
+Soil WC
+NIL
+NIL
+0.0
+1.0
+0.0
+10.0
+true
+false
+"set-plot-x-range 0 1\nset-plot-y-range 0 count patches\nset-histogram-num-bars 7" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [wc] of patches"
+
+BUTTON
+45
+105
+108
+138
+NIL
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+PLOT
+0
+145
+200
+295
+Tree diameter
+NIL
+NIL
+0.0
+10.0
+0.0
+0.25
+true
+false
+"" "ask turtles [\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -396,5 +533,5 @@ true
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 @#$#@#$#@
-0
+1
 @#$#@#$#@
