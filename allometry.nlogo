@@ -33,12 +33,17 @@ to setup
     set pcolor white
     set wc exp random-normal log-wc-mean log-wc-sd
   ]
-  ask n-of 4 patches [
+  ask n-of 10 patches [
     sprout 1 [
       set shape "tree"
       set age 1
-      set species "pine"
-      set species-number 0
+      ifelse random-float 1 < 0.5 [
+        set species-number 0
+        set species "pine"
+      ] [
+        set species-number 1
+        set species "juniper"
+      ]
 
       get-diam-params
 
@@ -65,16 +70,16 @@ to set-params
   set log-wc-sd 0.562
 
   ;; Parameters derived from NLME equations
-  set diam-asym-mean [ 0.145 0.145 ]
-  set diam-asym-sd [ 0.078 0.078 ]
-  set diam-asym-wc [ 0.029 0.029 ]
+  set diam-asym-mean [ 0.145 0.031 ]
+  set diam-asym-sd [ 0.078 0.01 ]
+  set diam-asym-wc [ 0.029 0.006 ]
 
-  set diam-lrc-mean [ -3.57 -3.57 ]
-  set diam-lrc-sd [ 0.976 0.976 ]
-  set diam-lrc-wc [ -0.215 -0.215 ]
+  set diam-lrc-mean [ -3.57 -1.018 ]
+  set diam-lrc-sd [ 0.976 0.897 ]
+  set diam-lrc-wc [ -0.215 -0.593 ]
 
   ;; Parameter correlations (asym vs. lrc)
-  set diam-corr [ -0.886 -0.886 ]
+  set diam-corr [ -0.886 -0.866 ]
 
 end
 
@@ -184,10 +189,10 @@ NIL
 1
 
 PLOT
-0
-145
-200
-295
+700
+10
+900
+160
 Tree diameter
 NIL
 NIL
@@ -197,7 +202,25 @@ NIL
 0.25
 true
 false
-"" "ask turtles [\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
+"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+700
+190
+900
+340
+Tree diameter (1)
+NIL
+NIL
+0.0
+10.0
+0.0
+0.25
+true
+false
+"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
