@@ -1,4 +1,5 @@
 globals [
+  ;; Parameters for deriving allometric equation (diameter)
   diam-asym-mean
   diam-lrc-mean
   diam-asym-sd
@@ -7,38 +8,48 @@ globals [
   diam-lrc-wc
   diam-corr
 
+  ;; Parameters for deriving CMass from diameter
   cwood-mean
   cwood-sd
 
+  ;; Mean / SD of water content
   log-wc-mean
   log-wc-sd
 ]
 
 turtles-own [
+  ;; Allometric coefficients
   diam
   diam-asym
   diam-lrc
+  ;; Cmass values
+  cwood-coef
+  cwood
+
+  ;; Other individual characteristics
   age
   species
   species-number
-  cwood-coef
-  cwood
 ]
 
 patches-own [
-  wc
+  wc ;; Water content of soil (Guess units)
 ]
 
 to setup
   ca
 
+  ;; Read in parameters
   set-params
 
+  ;; Patch set up
   ask patches [
     set pcolor white
     set wc exp random-normal log-wc-mean log-wc-sd
   ]
-  ask n-of 10 patches [
+
+  ;; Create initial trees (50/50 pine or juniper)
+  ask n-of 50 patches [
     sprout 1 [
       set shape "tree"
       set age 1
@@ -50,12 +61,14 @@ to setup
         set species "juniper"
       ]
 
+      ;; Assign allometric coefficients
       get-diam-params
       get-cwood-params
 
     ]
   ]
 
+  ;; Opens a monitor for tree 0
   stop-inspecting-dead-agents
   inspect turtle 0
   reset-ticks
@@ -95,17 +108,13 @@ to set-params
 end
 
 to get-diam-params
-  ;; Uses equation from
+  ;; Uses bivariate random normal equation from
   ;; https://www.probabilitycourse.com/chapter5/5_3_2_bivariate_normal_dist.php
 
   set diam-asym -9999
   set diam-lrc 9999
 
-  let i 0
-
   while [ (diam-asym < 0) or (diam-lrc > 0) ] [ ;; check for reasonable parameter values
-    print self
-    print i
     ;; 1. Generate z1 and z2
     let z1 random-normal 0 1
     let z2 random-normal 0 1
@@ -120,12 +129,12 @@ to get-diam-params
     set diam-lrc z1 * item species-number diam-lrc-sd + item species-number diam-lrc-mean
     set diam-lrc diam-lrc + item species-number diam-lrc-wc * [wc] of patch-here
 
-    set i i + 1
   ]
 end
 
 
 to get-cwood-params
+  ;; Set coefficient to relate diameter to c-wood
   set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
 end
 
@@ -136,10 +145,10 @@ to calc-diameter
 end
 
 to calc-cwood
+  ;; Could merge this into single statement
   let ldiam ln diam
   let lcwood ldiam * cwood-coef
   set cwood exp lcwood
-
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -258,11 +267,11 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-974
-10
-1174
-160
-plot 1
+750
+310
+950
+460
+CWood coefs
 NIL
 NIL
 0.0
@@ -305,10 +314,10 @@ NIL
 0.0
 10.0
 0.0
-0.5
+0.1
 true
 false
-"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
+"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
