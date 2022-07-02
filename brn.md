@@ -7,5 +7,5 @@ X = Z_1
 \]
 
 \[
-Y = \rho Z_1 + \sqrt{1 - \rho^2 Z_2}
+Y = \rho Z_1 + \sqrt{(1 - \rho^2)} Z_2
 \]
