@@ -7,6 +7,9 @@ globals [
   diam-lrc-wc
   diam-corr
 
+  cwood-mean
+  cwood-sd
+
   log-wc-mean
   log-wc-sd
 ]
@@ -18,6 +21,8 @@ turtles-own [
   age
   species
   species-number
+  cwood-coef
+  cwood
 ]
 
 patches-own [
@@ -46,6 +51,7 @@ to setup
       ]
 
       get-diam-params
+      get-cwood-params
 
     ]
   ]
@@ -60,6 +66,7 @@ to go
   ask turtles [
     set age age + 1
     calc-diameter
+    calc-cwood
   ]
   tick
 end
@@ -81,6 +88,10 @@ to set-params
   ;; Parameter correlations (asym vs. lrc)
   set diam-corr [ -0.886 -0.866 ]
 
+  ;; log cwood to log diameter
+  set cwood-mean [ 1.123 1.381 ]
+  set cwood-sd [ 0.395 0.352 ]
+
 end
 
 to get-diam-params
@@ -100,7 +111,11 @@ to get-diam-params
   set diam-asym diam-asym + item species-number diam-asym-wc * [wc] of patch-here
   set diam-lrc z1 * item species-number diam-lrc-sd + item species-number diam-lrc-mean
   set diam-lrc diam-lrc + item species-number diam-lrc-wc * [wc] of patch-here
+end
 
+
+to get-cwood-params
+  set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
 end
 
 to calc-diameter
@@ -108,11 +123,18 @@ to calc-diameter
   ;; Asym*(1 - exp(-exp(lrc)*input))
   set diam diam-asym * ( 1 - exp(- exp( diam-lrc ) * age ))
 end
+
+to calc-cwood
+  let ldiam ln diam
+  let lcwood ldiam * cwood-coef
+  set cwood exp lcwood
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+95
 10
-647
+532
 448
 -1
 -1
@@ -137,10 +159,10 @@ ticks
 30.0
 
 BUTTON
-41
-56
-107
-89
+20
+55
+86
+88
 NIL
 setup\n
 NIL
@@ -154,10 +176,10 @@ NIL
 1
 
 PLOT
-2
-298
-202
-448
+540
+310
+740
+460
 Soil WC
 NIL
 NIL
@@ -167,14 +189,14 @@ NIL
 10.0
 true
 false
-"set-plot-x-range 0 1\nset-plot-y-range 0 count patches\nset-histogram-num-bars 7" ""
+"set-plot-x-range 0 1\nset-plot-y-range 0 count patches\nset-histogram-num-bars 10" ""
 PENS
 "default" 1.0 1 -16777216 true "" "histogram [wc] of patches"
 
 BUTTON
-45
+20
 105
-108
+83
 138
 NIL
 go
@@ -189,11 +211,11 @@ NIL
 1
 
 PLOT
-700
+540
 10
-900
+740
 160
-Tree diameter
+Tree diameter (0)
 NIL
 NIL
 0.0
@@ -207,20 +229,75 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-700
-190
-900
-340
+540
+160
+740
+310
 Tree diameter (1)
 NIL
 NIL
 0.0
 10.0
 0.0
-0.25
+0.1
 true
 false
 "" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+974
+10
+1174
+160
+plot 1
+NIL
+NIL
+0.0
+2.0
+0.0
+10.0
+true
+false
+"set-histogram-num-bars 10" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [cwood-coef] of turtles with [species-number = 0]"
+"pen-1" 0.2 1 -2674135 true "" "histogram [cwood-coef] of turtles with [species-number = 1]"
+
+PLOT
+750
+10
+950
+160
+CWood (0)
+NIL
+NIL
+0.0
+10.0
+0.0
+0.5
+true
+false
+"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+750
+160
+950
+310
+CWood (1)
+NIL
+NIL
+0.0
+10.0
+0.0
+0.5
+true
+false
+"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
