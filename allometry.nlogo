@@ -98,19 +98,30 @@ to get-diam-params
   ;; Uses equation from
   ;; https://www.probabilitycourse.com/chapter5/5_3_2_bivariate_normal_dist.php
 
-  ;; 1. Generate z1 and z2
-  let z1 random-normal 0 1
-  let z2 random-normal 0 1
+  set diam-asym -9999
+  set diam-lrc 9999
 
-  ;; 2. Convert z2 to correlated version
-  let tmp-corr item species-number diam-corr
-  set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
+  let i 0
 
-  ;; 3. Back transform to asym and lrc
-  set diam-asym z1 * item species-number diam-asym-sd + item species-number diam-asym-mean
-  set diam-asym diam-asym + item species-number diam-asym-wc * [wc] of patch-here
-  set diam-lrc z1 * item species-number diam-lrc-sd + item species-number diam-lrc-mean
-  set diam-lrc diam-lrc + item species-number diam-lrc-wc * [wc] of patch-here
+  while [ (diam-asym < 0) or (diam-lrc > 0) ] [ ;; check for reasonable parameter values
+    print self
+    print i
+    ;; 1. Generate z1 and z2
+    let z1 random-normal 0 1
+    let z2 random-normal 0 1
+
+    ;; 2. Convert z2 to correlated version
+    let tmp-corr item species-number diam-corr
+    set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
+
+    ;; 3. Back transform to asym and lrc
+    set diam-asym z1 * item species-number diam-asym-sd + item species-number diam-asym-mean
+    set diam-asym diam-asym + item species-number diam-asym-wc * [wc] of patch-here
+    set diam-lrc z1 * item species-number diam-lrc-sd + item species-number diam-lrc-mean
+    set diam-lrc diam-lrc + item species-number diam-lrc-wc * [wc] of patch-here
+
+    set i i + 1
+  ]
 end
 
 
