@@ -1,285 +1,157 @@
 globals [
-  max-age-pine
-  max-age-juniper
-  max-age-standing-dead
-  flag
+  diam-asym-mean
+  diam-lrc-mean
+  diam-asym-sd
+  diam-lrc-sd
+  diam-asym-wc
+  diam-lrc-wc
+  diam-corr
+
+  cwood-mean
+  cwood-sd
+
+  log-wc-mean
+  log-wc-sd
 ]
 
 turtles-own [
+  diam
+  diam-asym
+  diam-lrc
   age
-  biomass
-  max-dbiomass ;; Maximum annual biomass accumulation
-  max-live-biomass ;; Max total biomass
-  live?
-  standing?
-  reproductive-age
-  age-since-death
-  decay-rate-standing
-  decay-rate-fallen
-  pfall ;; probability of falling once dead
+  species
+  species-number
+  cwood-coef
+  cwood
 ]
 
-breed [pines pine]
-
-breed [junipers juniper]
-
 patches-own [
-  occupied?
-  pbiomass ;;amount of harvestable wood on a patch (since we don't yet have live, dead, and litter biomass components) (patch = 1 tree)
-  soil-moisture ;; factor to control suitability
-  suitability-pine
-  suitability-juniper
-  max-suitability-pine
-  max-suitability-juniper
+  wc
 ]
 
 to setup
   ca
-  set max-age-pine 200
-  set max-age-juniper 300
-  set max-age-standing-dead 1000
 
-  set-default-shape junipers "tree"
-  set-default-shape pines "tree pine"
+  set-params
 
   ask patches [
-    set soil-moisture random-float 10 * (pycor / max-pycor)
-    set max-suitability-pine random-float 1 * (pycor / max-pycor)
-    set suitability-pine max-suitability-pine
-    set max-suitability-juniper random-float 1 * (( max-pycor - pycor) / max-pycor)
-    set suitability-juniper max-suitability-juniper
-    ;set pcolor scale-color blue suitability-juniper 0 1
-    ;set pcolor scale-color green suitability-pine 0 1
-    set occupied? false
+    set pcolor white
+    set wc exp random-normal log-wc-mean log-wc-sd
+  ]
+  ask n-of 10 patches [
+    sprout 1 [
+      set shape "tree"
+      set age 1
+      ifelse random-float 1 < 0.5 [
+        set species-number 0
+        set species "pine"
+      ] [
+        set species-number 1
+        set species "juniper"
+      ]
+
+      get-diam-params
+      get-cwood-params
+
+    ]
   ]
 
-  ask n-of n-initial-trees patches [
-    ifelse suitability-juniper > suitability-pine
-    [ recruit-juniper ]
-    [ recruit-pine ]
-    set occupied? true
-  ]
-
+  stop-inspecting-dead-agents
+  inspect turtle 0
   reset-ticks
-  set flag 0
 end
 
 to go
-
-  if not any? turtles [stop]
-  if flag = 1 [stop]
-  ;;if (any? patches with [count turtles-here > 1]) [stop]
-  ask turtles with [live?] [
-  ;ask turtles  [
-    grow
-    if age > reproductive-age and any? neighbors with [not occupied?] [
-      reproduce
-    ]
-    death
-  ]
-  ;; Disturb trees
-  ask turtles with [not live? and standing?] [
-    disturbance
-    ;harvest
-    set age-since-death age-since-death + 1
-  ]
-
-  ;; Decay trees
-  ask turtles with [not live?] [
-    decay
-  ]
-
-  ask turtles with [not live?] [
-    remove-trees
-  ]
-
-  if fires? [
-    if random-float 1 < (1 / fire-return-time)
-    [
-      fire
-    ]
+  if ticks > 100 [stop]
+  ask turtles [
+    set age age + 1
+    calc-diameter
+    calc-cwood
   ]
   tick
 end
 
-to grow
-  ;; Biomass accumulation
-  let dbiomass 0
-  ifelse breed = pines [
-    set dbiomass max-dbiomass * [max-suitability-pine] of patch-here
-  ] [
-    set dbiomass max-dbiomass * [max-suitability-juniper] of patch-here
-  ]
-  set biomass biomass + dbiomass
+to set-params
+  ;; wc values from Guess
+  set log-wc-mean -1.939
+  set log-wc-sd 0.562
 
-  ;; Increase age
-  set age age + 1
-  ifelse age > reproductive-age [
-    set size 2
-    ask patch-here [
-      set suitability-pine 0
-      set suitability-juniper 0
-    ]
-  ]
-  [
-    ;; Reduce suitability by age
-    let age-ratio age / reproductive-age
-    ask patch-here [
-      set suitability-pine max-suitability-pine * (1 - age-ratio)
-      set suitability-juniper max-suitability-juniper * (1 - age-ratio)
-    ]
-  ]
-end
+  ;; Parameters derived from NLME equations
+  set diam-asym-mean [ 0.145 0.031 ]
+  set diam-asym-sd [ 0.078 0.01 ]
+  set diam-asym-wc [ 0.029 0.006 ]
 
-to reproduce
-  ifelse breed = pines [
-    ask one-of neighbors with [not occupied?] [
-      if random-float 1 < suitability-pine [
-        recruit-pine
-        set pcolor black
-        set occupied? true
-      ]
-    ]
-  ]
-  [
-    ask one-of neighbors with [not occupied?] [
-      if random-float 1 < suitability-juniper [
-        recruit-juniper
-        set pcolor black
-        set occupied? true
-      ]
-    ]
-  ]
+  set diam-lrc-mean [ -3.57 -1.018 ]
+  set diam-lrc-sd [ 0.976 0.897 ]
+  set diam-lrc-wc [ -0.215 -0.593 ]
+
+  ;; Parameter correlations (asym vs. lrc)
+  set diam-corr [ -0.886 -0.866 ]
+
+  ;; log cwood to log diameter
+  set cwood-mean [ 1.123 1.381 ]
+  set cwood-sd [ 0.395 0.352 ]
 
 end
 
-to death
-  let pdeath 0
-  ifelse breed = pines [
-    set pdeath (age / max-age-pine) ^ 5
-  ]
-  [
-    set pdeath (age / max-age-juniper) ^ 5
-  ]
+to get-diam-params
+  ;; Uses equation from
+  ;; https://www.probabilitycourse.com/chapter5/5_3_2_bivariate_normal_dist.php
 
-  if random-float 1 < pdeath [
-    set live? false
-    set age-since-death 0
-    set max-live-biomass biomass
-    set color gray
-    ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
-  ]
+  ;; 1. Generate z1 and z2
+  let z1 random-normal 0 1
+  let z2 random-normal 0 1
 
+  ;; 2. Convert z2 to correlated version
+  let tmp-corr item species-number diam-corr
+  set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
+
+  ;; 3. Back transform to asym and lrc
+  set diam-asym z1 * item species-number diam-asym-sd + item species-number diam-asym-mean
+  set diam-asym diam-asym + item species-number diam-asym-wc * [wc] of patch-here
+  set diam-lrc z1 * item species-number diam-lrc-sd + item species-number diam-lrc-mean
+  set diam-lrc diam-lrc + item species-number diam-lrc-wc * [wc] of patch-here
 end
 
-to disturbance
-  if random-float 1 < pfall [
-    set standing? false
-    set shape "logs"
-  ]
+
+to get-cwood-params
+  set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
 end
 
-to decay ;; combined decay function
-  ;; Return rate
-  let return-rate 0
-  ifelse standing? [
-    set return-rate (biomass * decay-rate-standing) / max-live-biomass
-    set biomass biomass * (1 - decay-rate-standing)
-  ] [
-    set return-rate (biomass * decay-rate-fallen) / max-live-biomass
-    set biomass biomass * (1 - decay-rate-fallen)
-  ]
-  ask patch-here [
-    set suitability-pine suitability-pine + ( return-rate * max-suitability-pine )
-    set suitability-juniper suitability-juniper + ( return-rate * max-suitability-juniper )
-  ]
+to calc-diameter
+  ;; Equation from https://stat.ethz.ch/R-manual/R-devel/library/stats/html/SSasympOrig.html
+  ;; Asym*(1 - exp(-exp(lrc)*input))
+  set diam diam-asym * ( 1 - exp(- exp( diam-lrc ) * age ))
 end
 
-to remove-trees
-  if biomass / max-live-biomass < 0.1 [
-    ;ask patch-here [ set occupied? false ]
-    die
-  ]
-end
+to calc-cwood
+  let ldiam ln diam
+  let lcwood ldiam * cwood-coef
+  set cwood exp lcwood
 
-to fire
-  ask one-of patches with [occupied?] [
-    let tmp-size random-poisson fire-size
-    ask turtles in-radius fire-size [
-      ask patch-here [
-        set occupied? false
-        set pcolor 12
-      ]
-      die
-    ]
-  ]
-end
-
-to recruit-pine
-  sprout-pines 1 [
-    set age 0
-    set reproductive-age 20
-    set decay-rate-standing 0.01
-    set decay-rate-fallen 0.1
-    set pfall 0.25
-    set biomass 0
-    set max-dbiomass 1
-    set live? true
-    set standing? true
-    set color 57
-    set size 1
-  ]
-end
-
-to recruit-juniper
-  sprout-junipers 1 [
-    set age 0
-    set reproductive-age 30
-    set decay-rate-standing 0.01
-    set decay-rate-fallen 0.1
-    set pfall 0.25
-    set biomass 0
-    set max-dbiomass 0.25
-    set live? true
-    set standing? true
-    set color 53
-    set size 1
-  ]
-end
-
-to-report biomass-pine
-  report sum [biomass] of pines with [live?]
-end
-
-to-report biomass-juniper
-  report sum [biomass] of junipers with [live?]
-end
-
-to-report biomass-dead
-  report sum [biomass] of turtles with [not live?]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+95
 10
-746
-547
+532
+448
 -1
 -1
-16.0
+13.0
 1
 10
 1
 1
 1
 0
-0
-0
 1
-0
-32
-0
-32
+1
+1
+-16
+16
+-16
+16
 0
 0
 1
@@ -287,12 +159,12 @@ ticks
 30.0
 
 BUTTON
-30
-10
-96
-43
+20
+55
+86
+88
 NIL
-setup
+setup\n
 NIL
 1
 T
@@ -303,11 +175,29 @@ NIL
 NIL
 1
 
+PLOT
+540
+310
+740
+460
+Soil WC
+NIL
+NIL
+0.0
+1.0
+0.0
+10.0
+true
+false
+"set-plot-x-range 0 1\nset-plot-y-range 0 count patches\nset-histogram-num-bars 10" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [wc] of patches"
+
 BUTTON
-106
-10
-169
-43
+20
+105
+83
+138
 NIL
 go
 T
@@ -321,153 +211,95 @@ NIL
 1
 
 PLOT
-765
+540
 10
-965
+740
 160
-Live biomass
+Tree diameter (0)
 NIL
 NIL
 0.0
 10.0
 0.0
-10.0
+0.25
 true
 false
-"" ""
+"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
 PENS
-"pine" 1.0 0 -6565750 true "" "plot biomass-pine"
-"juniper" 1.0 0 -13210332 true "" "plot biomass-juniper"
+"default" 1.0 0 -16777216 true "" ""
 
 PLOT
-765
-175
-965
-325
-Dead biomass
+540
+160
+740
+310
+Tree diameter (1)
 NIL
 NIL
 0.0
 10.0
 0.0
-10.0
+0.1
 true
 false
-"" ""
+"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
 PENS
-"default" 1.0 0 -16777216 true "" "plot biomass-dead"
-
-SLIDER
-18
-51
-190
-84
-n-initial-trees
-n-initial-trees
-0
-500
-30.0
-1
-1
-NIL
-HORIZONTAL
-
-SWITCH
-48
-106
-151
-139
-fires?
-fires?
-1
-1
--1000
-
-SLIDER
-16
-147
-188
-180
-fire-return-time
-fire-return-time
-0
-100
-20.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-16
-185
-188
-218
-fire-size
-fire-size
-0
-20
-2.0
-1
-1
-NIL
-HORIZONTAL
+"default" 1.0 0 -16777216 true "" ""
 
 PLOT
-765
-340
-965
-490
+974
+10
+1174
+160
 plot 1
 NIL
 NIL
 0.0
-10.0
+2.0
 0.0
 10.0
 true
 false
-"" ""
+"set-histogram-num-bars 10" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot count turtles with [not live? and standing?]"
-"pen-1" 1.0 0 -7500403 true "" "plot count turtles with [not live? and not standing?]"
+"default" 1.0 1 -16777216 true "" "histogram [cwood-coef] of turtles with [species-number = 0]"
+"pen-1" 0.2 1 -2674135 true "" "histogram [cwood-coef] of turtles with [species-number = 1]"
 
 PLOT
-5
-230
-205
-380
-Suitability (16 16)
-NIL
-NIL
-0.0
-10.0
-0.0
-1.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -6565750 true "" "plot [suitability-pine] of patch 16 16"
-"pen-1" 1.0 0 -13210332 true "" "plot [suitability-juniper] of patch 16 16"
-
-PLOT
+750
 10
-410
-210
-560
-plot 2
+950
+160
+CWood (0)
 NIL
 NIL
 0.0
 10.0
--0.2
-0.2
+0.0
+0.5
 true
 false
-"" ""
+"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
 PENS
-"default" 1.0 0 -16777216 true "" "plot [max-suitability-pine - suitability-pine] of patch 16 16 "
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+750
+160
+950
+310
+CWood (1)
+NIL
+NIL
+0.0
+10.0
+0.0
+0.5
+true
+false
+"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -672,34 +504,6 @@ true
 0
 Line -7500403 true 150 0 150 150
 
-logs
-false
-0
-Polygon -7500403 true true 15 241 75 271 89 245 135 271 150 246 195 271 285 121 235 96 255 61 195 31 181 55 135 31 45 181 49 183
-Circle -1 true false 132 222 66
-Circle -16777216 false false 132 222 66
-Circle -1 true false 72 222 66
-Circle -1 true false 102 162 66
-Circle -7500403 true true 222 72 66
-Circle -7500403 true true 192 12 66
-Circle -7500403 true true 132 12 66
-Circle -16777216 false false 102 162 66
-Circle -16777216 false false 72 222 66
-Circle -1 true false 12 222 66
-Circle -16777216 false false 30 240 30
-Circle -1 true false 42 162 66
-Circle -16777216 false false 42 162 66
-Line -16777216 false 195 30 105 180
-Line -16777216 false 255 60 165 210
-Circle -16777216 false false 12 222 66
-Circle -16777216 false false 90 240 30
-Circle -16777216 false false 150 240 30
-Circle -16777216 false false 120 180 30
-Circle -16777216 false false 60 180 30
-Line -16777216 false 195 270 285 120
-Line -16777216 false 15 240 45 180
-Line -16777216 false 45 180 135 30
-
 pentagon
 false
 0
@@ -776,14 +580,6 @@ Circle -7500403 true true 65 21 108
 Circle -7500403 true true 116 41 127
 Circle -7500403 true true 45 90 120
 Circle -7500403 true true 104 74 152
-
-tree pine
-false
-0
-Rectangle -6459832 true false 120 225 180 300
-Polygon -7500403 true true 150 240 240 270 150 135 60 270
-Polygon -7500403 true true 150 75 75 210 150 195 225 210
-Polygon -7500403 true true 150 7 90 157 150 142 210 157 150 7
 
 triangle
 false

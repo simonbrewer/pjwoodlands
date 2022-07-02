@@ -83,10 +83,13 @@ to go
     ;harvest
     set age-since-death age-since-death + 1
   ]
-
   ;; Decay trees
-  ask turtles with [not live?] [
-    decay
+  ask turtles with [not live? and standing?] [
+    decay-standing
+  ]
+  ;; Decay trees
+  ask turtles with [not live? and not standing?] [
+    decay-fallen
   ]
 
   ask turtles with [not live?] [
@@ -179,20 +182,46 @@ to disturbance
   ]
 end
 
-to decay ;; combined decay function
+to decay-standing
+  ;print "Biomass"
+  ;print biomass
+  ;print max-live-biomass
+  ;print (biomass * (1 - decay-rate-standing)) / max-live-biomass
+  ;print "Suitability"
+  ;ask patch-here [ print suitability-pine ]
+  ;ask patch-here [ print max-suitability-pine * [decay-rate-standing] of myself]
   ;; Return rate
-  let return-rate 0
-  ifelse standing? [
-    set return-rate (biomass * decay-rate-standing) / max-live-biomass
-    set biomass biomass * (1 - decay-rate-standing)
-  ] [
-    set return-rate (biomass * decay-rate-fallen) / max-live-biomass
-    set biomass biomass * (1 - decay-rate-fallen)
-  ]
+  let return-rate (biomass * decay-rate-standing) / max-live-biomass
+;  print "-----------------------------------------------"
+;  print "RR"
+;  print biomass
+;  print decay-rate-standing
+;  print max-live-biomass
+;  print return-rate
+;  print "-----------------------------------------------"
+;  print "Suitability"
+;  ask patch-here [ print suitability-pine ]
+;  ask patch-here [ print max-suitability-pine ]
   ask patch-here [
     set suitability-pine suitability-pine + ( return-rate * max-suitability-pine )
     set suitability-juniper suitability-juniper + ( return-rate * max-suitability-juniper )
   ]
+
+;  ask patch-here [ print suitability-pine ]
+;  ask patch-here [ print max-suitability-pine ]
+;  print "-----------------------------------------------"
+  set biomass biomass * (1 - decay-rate-standing)
+  ;print biomass
+end
+
+to decay-fallen
+  ;;print (biomass * (1 - decay-rate-fallen)) / max-live-biomass
+  let return-rate (biomass * decay-rate-fallen) / max-live-biomass
+  ask patch-here [
+    set suitability-pine suitability-pine + ( return-rate * max-suitability-pine )
+    set suitability-juniper suitability-juniper + ( return-rate * max-suitability-juniper )
+  ]
+  set biomass biomass * (1 - decay-rate-fallen)
 end
 
 to remove-trees
@@ -461,8 +490,8 @@ NIL
 NIL
 0.0
 10.0
--0.2
-0.2
+0.0
+10.0
 true
 false
 "" ""
