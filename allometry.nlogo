@@ -5,6 +5,7 @@ globals [
   diam-lrc-sd
   diam-asym-wc
   diam-lrc-wc
+  diam-corr
 
   log-wc-mean
   log-wc-sd
@@ -15,6 +16,8 @@ turtles-own [
   diam-asym
   diam-lrc
   age
+  species
+  species-number
 ]
 
 patches-own [
@@ -33,11 +36,12 @@ to setup
   ask n-of 4 patches [
     sprout 1 [
       set shape "tree"
-      let tmp-asym-mean diam-asym-mean + diam-asym-wc * [wc] of patch-here
-      set diam-asym random-normal tmp-asym-mean diam-asym-sd
-      let tmp-lrc-mean diam-lrc-mean + diam-lrc-wc * [wc] of patch-here
-      set diam-lrc random-normal tmp-lrc-mean diam-lrc-sd
       set age 1
+      set species "pine"
+      set species-number 0
+
+      get-diam-params
+
     ]
   ]
 
@@ -47,7 +51,7 @@ to setup
 end
 
 to go
-  if ticks > 50 [stop]
+  if ticks > 100 [stop]
   ask turtles [
     set age age + 1
     calc-diameter
@@ -61,13 +65,36 @@ to set-params
   set log-wc-sd 0.562
 
   ;; Parameters derived from NLME equations
-  set diam-asym-mean 0.145
-  set diam-asym-sd 0.078
-  set diam-asym-wc 0.029
+  set diam-asym-mean [ 0.145 0.145 ]
+  set diam-asym-sd [ 0.078 0.078 ]
+  set diam-asym-wc [ 0.029 0.029 ]
 
-  set diam-lrc-mean -3.57
-  set diam-lrc-sd 0.976
-  set diam-lrc-wc -0.215
+  set diam-lrc-mean [ -3.57 -3.57 ]
+  set diam-lrc-sd [ 0.976 0.976 ]
+  set diam-lrc-wc [ -0.215 -0.215 ]
+
+  ;; Parameter correlations (asym vs. lrc)
+  set diam-corr [ -0.886 -0.886 ]
+
+end
+
+to get-diam-params
+  ;; Uses equation from
+  ;; https://www.probabilitycourse.com/chapter5/5_3_2_bivariate_normal_dist.php
+
+  ;; 1. Generate z1 and z2
+  let z1 random-normal 0 1
+  let z2 random-normal 0 1
+
+  ;; 2. Convert z2 to correlated version
+  let tmp-corr item species-number diam-corr
+  set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
+
+  ;; 3. Back transform to asym and lrc
+  set diam-asym z1 * item species-number diam-asym-sd + item species-number diam-asym-mean
+  set diam-asym diam-asym + item species-number diam-asym-wc * [wc] of patch-here
+  set diam-lrc z1 * item species-number diam-lrc-sd + item species-number diam-lrc-mean
+  set diam-lrc diam-lrc + item species-number diam-lrc-wc * [wc] of patch-here
 
 end
 
