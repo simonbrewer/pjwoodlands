@@ -33,7 +33,10 @@ turtles-own [
 ]
 
 patches-own [
+  occupied? ;; Tree present or not
   wc ;; Water content of soil (Guess units)
+  suitability
+  max-suitability
 ]
 
 to setup
@@ -46,6 +49,13 @@ to setup
   ask patches [
     set pcolor white
     set wc exp random-normal log-wc-mean log-wc-sd
+
+    ;; Patch suitability (not linked to wc atm)
+    let tmp-suitability-0 random-float 1 * ( pycor / max-pycor )
+    let tmp-suitability-1 random-float 1 * (( max-pycor - pycor ) / max-pycor)
+    set max-suitability (list tmp-suitability-0 tmp-suitability-1 )
+    set suitability max-suitability
+
   ]
 
   ;; Create initial trees (50/50 pine or juniper)
@@ -53,17 +63,15 @@ to setup
     sprout 1 [
       set shape "tree"
       set age 1
-      ifelse random-float 1 < 0.5 [
+      ifelse item 0 suitability > item 1 suitability
+      [
         set species-number 0
-        set species "pine"
+        recruitment
       ] [
         set species-number 1
-        set species "juniper"
+        recruitment
       ]
 
-      ;; Assign allometric coefficients
-      get-diam-params
-      get-cwood-params
 
     ]
   ]
@@ -149,6 +157,25 @@ to calc-cwood
   let ldiam ln diam
   let lcwood ldiam * cwood-coef
   set cwood exp lcwood
+end
+
+to recruitment
+
+  ifelse species-number = 0
+  [
+    set species "pine"
+    set shape "tree"
+    set color 53
+  ]
+  [
+    set species "juniper"
+    set shape "tree"
+    set color 57
+  ]
+  ;; Assign allometric coefficients
+  get-diam-params
+  get-cwood-params
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
