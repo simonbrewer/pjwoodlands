@@ -55,6 +55,7 @@ to setup
   ;; Patch set up
   ask patches [
     set pcolor white
+    set occupied? false
     set wc exp random-normal log-wc-mean log-wc-sd
 
     ;; Patch suitability (not linked to wc atm)
@@ -78,8 +79,8 @@ to setup
         recruitment
       ]
 
-
     ]
+    set occupied? true
   ]
 
   ;; Opens a monitor for tree 0
@@ -92,6 +93,9 @@ to go
   if ticks > 100 [stop]
   ask turtles [
     grow
+    if age > reproductive-age and any? neighbors with [not occupied?] [
+      reproduce species-number
+    ]
   ]
   tick
 end
@@ -118,6 +122,19 @@ to grow
   calc-diameter
   calc-cwood
 end
+
+to reproduce [tsn]
+  ask one-of neighbors with [not occupied?] [
+    if random-float 1 < item tsn suitability [
+      sprout 1 [
+        set species-number tsn
+        recruitment
+      ]
+      set occupied? true
+    ]
+  ]
+end
+
 to set-params
   ;; wc values from Guess
   set log-wc-mean -1.939
