@@ -15,6 +15,9 @@ globals [
   ;; Mean / SD of water content
   log-wc-mean
   log-wc-sd
+
+  ;; Mortality coefficients
+  max-age
 ]
 
 turtles-own [
@@ -90,12 +93,13 @@ to setup
 end
 
 to go
-  if ticks > 100 [stop]
-  ask turtles [
+  if ticks > 500 [stop]
+  ask turtles with [live?] [
     grow
     if age > reproductive-age and any? neighbors with [not occupied?] [
       reproduce species-number
     ]
+    death
   ]
   tick
 end
@@ -103,14 +107,8 @@ end
 to grow
   ;; Increase age
   set age age + 1
-  ifelse age > reproductive-age [
-    set size 2
-    ask patch-here [
-      set suitability replace-item 0 suitability 0
-      set suitability replace-item 1 suitability 0
-    ]
-  ]
-  [
+
+  if age < reproductive-age [
     ;; Reduce suitability by ratio of age to reproductive age
     let age-ratio age / reproductive-age
     ask patch-here [
@@ -119,8 +117,15 @@ to grow
     ]
   ]
 
-  calc-diameter
-  calc-cwood
+  if age = reproductive-age [
+    set size 2
+    ask patch-here [
+      set suitability replace-item 0 suitability 0
+      set suitability replace-item 1 suitability 0
+    ]
+  ]
+  ;calc-diameter ;; Only need to calculate this at death!!
+  ;calc-cwood
 end
 
 to reproduce [tsn]
@@ -133,6 +138,18 @@ to reproduce [tsn]
       set occupied? true
     ]
   ]
+end
+
+to death
+  let pdeath (age / item species-number max-age) ^ 5
+  if random-float 1 < pdeath [
+    set live? false
+    ;set age-since-death 0
+    ;set max-live-biomass biomass
+    set color gray
+    ;ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
+  ]
+
 end
 
 to set-params
@@ -155,6 +172,9 @@ to set-params
   ;; log cwood to log diameter
   set cwood-mean [ 1.123 1.381 ]
   set cwood-sd [ 0.395 0.352 ]
+
+  ;; Mortality
+  set max-age [ 200 300 ]
 
 end
 
@@ -237,11 +257,11 @@ end
 GRAPHICS-WINDOW
 95
 10
-525
-441
+532
+448
 -1
 -1
-6.5
+13.0
 1
 10
 1
@@ -252,9 +272,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-64
+32
 0
-64
+32
 0
 0
 1
