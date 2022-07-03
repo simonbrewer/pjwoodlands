@@ -30,6 +30,13 @@ turtles-own [
   age
   species
   species-number
+  reproductive-age
+  live?
+  standing?
+  age-since-death
+  decay-rate-standing
+  decay-rate-fallen
+  pfall ;;  prob of falling once dead
 ]
 
 patches-own [
@@ -58,12 +65,11 @@ to setup
 
   ]
 
+  ;; ask patches [set pcolor scale-color red item 0 max-suitability 0 1 ]
   ;; Create initial trees (50/50 pine or juniper)
   ask n-of 50 patches [
     sprout 1 [
-      set shape "tree"
-      set age 1
-      ifelse item 0 suitability > item 1 suitability
+      ifelse item 0 max-suitability > item 1 max-suitability
       [
         set species-number 0
         recruitment
@@ -85,13 +91,33 @@ end
 to go
   if ticks > 100 [stop]
   ask turtles [
-    set age age + 1
-    calc-diameter
-    calc-cwood
+    grow
   ]
   tick
 end
 
+to grow
+  ;; Increase age
+  set age age + 1
+  ifelse age > reproductive-age [
+    set size 2
+    ask patch-here [
+      set suitability replace-item 0 suitability 0
+      set suitability replace-item 1 suitability 0
+    ]
+  ]
+  [
+    ;; Reduce suitability by ratio of age to reproductive age
+    let age-ratio age / reproductive-age
+    ask patch-here [
+      set suitability replace-item 0 suitability (item 0 max-suitability * (1 - age-ratio))
+      set suitability replace-item 1 suitability (item 1 max-suitability * (1 - age-ratio))
+    ]
+  ]
+
+  calc-diameter
+  calc-cwood
+end
 to set-params
   ;; wc values from Guess
   set log-wc-mean -1.939
@@ -161,16 +187,29 @@ end
 
 to recruitment
 
+  set age 0
+  set live? true
+  set standing? true
+  set cwood 0
+
   ifelse species-number = 0
   [
     set species "pine"
-    set shape "tree"
-    set color 53
+    set shape "tree pine"
+    set color 57
+    set reproductive-age 20
+    set decay-rate-standing 0.01
+    set decay-rate-fallen 0.1
+    set pfall 0.25
   ]
   [
     set species "juniper"
     set shape "tree"
-    set color 57
+    set color 53
+    set reproductive-age 30
+    set decay-rate-standing 0.01
+    set decay-rate-fallen 0.1
+    set pfall 0.25
   ]
   ;; Assign allometric coefficients
   get-diam-params
@@ -181,11 +220,11 @@ end
 GRAPHICS-WINDOW
 95
 10
-532
-448
+525
+441
 -1
 -1
-13.0
+6.5
 1
 10
 1
@@ -195,10 +234,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
+0
+64
+0
+64
 0
 0
 1
@@ -551,6 +590,34 @@ true
 0
 Line -7500403 true 150 0 150 150
 
+logs
+false
+0
+Polygon -7500403 true true 15 241 75 271 89 245 135 271 150 246 195 271 285 121 235 96 255 61 195 31 181 55 135 31 45 181 49 183
+Circle -1 true false 132 222 66
+Circle -16777216 false false 132 222 66
+Circle -1 true false 72 222 66
+Circle -1 true false 102 162 66
+Circle -7500403 true true 222 72 66
+Circle -7500403 true true 192 12 66
+Circle -7500403 true true 132 12 66
+Circle -16777216 false false 102 162 66
+Circle -16777216 false false 72 222 66
+Circle -1 true false 12 222 66
+Circle -16777216 false false 30 240 30
+Circle -1 true false 42 162 66
+Circle -16777216 false false 42 162 66
+Line -16777216 false 195 30 105 180
+Line -16777216 false 255 60 165 210
+Circle -16777216 false false 12 222 66
+Circle -16777216 false false 90 240 30
+Circle -16777216 false false 150 240 30
+Circle -16777216 false false 120 180 30
+Circle -16777216 false false 60 180 30
+Line -16777216 false 195 270 285 120
+Line -16777216 false 15 240 45 180
+Line -16777216 false 45 180 135 30
+
 pentagon
 false
 0
@@ -627,6 +694,14 @@ Circle -7500403 true true 65 21 108
 Circle -7500403 true true 116 41 127
 Circle -7500403 true true 45 90 120
 Circle -7500403 true true 104 74 152
+
+tree pine
+false
+0
+Rectangle -6459832 true false 120 225 180 300
+Polygon -7500403 true true 150 240 240 270 150 135 60 270
+Polygon -7500403 true true 150 75 75 210 150 195 225 210
+Polygon -7500403 true true 150 7 90 157 150 142 210 157 150 7
 
 triangle
 false
