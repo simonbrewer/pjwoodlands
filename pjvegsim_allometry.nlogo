@@ -1,3 +1,5 @@
+extensions [ csv profiler ]
+
 globals [
   ;; Parameters for deriving allometric equation (diameter)
   diam-asym-mean
@@ -93,6 +95,8 @@ to setup
 end
 
 to go
+
+  if not any? turtles with [live?] [stop]
   if ticks > 500 [stop]
   ask turtles with [live?] [
     grow
@@ -101,6 +105,14 @@ to go
     ]
     death
   ]
+
+  ;; Disturb trees
+  ask turtles with [not live? and standing?] [
+    disturbance
+    ;harvest
+    set age-since-death age-since-death + 1
+  ]
+
   tick
 end
 
@@ -144,12 +156,15 @@ to death
   let pdeath (age / item species-number max-age) ^ 5
   if random-float 1 < pdeath [
     set live? false
-    ;set age-since-death 0
+    set age-since-death 0
     ;set max-live-biomass biomass
     set color gray
     ;ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
   ]
 
+end
+
+to disturbance
 end
 
 to set-params
@@ -203,7 +218,6 @@ to get-diam-params
   ]
 end
 
-
 to get-cwood-params
   ;; Set coefficient to relate diameter to c-wood
   set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
@@ -252,6 +266,15 @@ to recruitment
   get-diam-params
   get-cwood-params
 
+end
+
+to profile
+  setup                                          ;; set up the model
+  profiler:start                                 ;; start profiling
+  repeat 500 [ go ]                               ;; run something you want to measure
+  profiler:stop                                  ;; stop profiling
+  csv:to-file "profiler_data.csv" profiler:data  ;; save the results
+  profiler:reset                                 ;; clear the data
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -802,7 +825,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.0
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
