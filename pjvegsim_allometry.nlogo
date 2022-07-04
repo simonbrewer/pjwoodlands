@@ -20,6 +20,9 @@ globals [
 
   ;; Mortality coefficients
   max-age
+  mort-asym
+  mort-lrc
+
 ]
 
 turtles-own [
@@ -153,7 +156,15 @@ to reproduce [tsn]
 end
 
 to death
-  let pdeath (age / item species-number max-age) ^ 5
+  ;;let pdeath (age / item species-number max-age) ^ 5
+
+  let tmp-asym item species-number mort-asym
+  let tmp-lrc item species-number mort-lrc
+  set tmp-lrc tmp-lrc * 2
+  let pdeath tmp-asym * ( 1 - exp(- exp( tmp-lrc ) * age ))
+  ;print self
+  ;print age
+  ;print pdeath
   if random-float 1 < pdeath [
     set live? false
     set age-since-death 0
@@ -190,6 +201,8 @@ to set-params
 
   ;; Mortality
   set max-age [ 200 300 ]
+  set mort-asym [ 1.0 1.0 ]
+  set mort-lrc[ -3.664 -3.758 ]
 
 end
 
