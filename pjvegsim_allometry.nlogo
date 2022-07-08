@@ -139,8 +139,8 @@ to grow
       set suitability replace-item 1 suitability 0
     ]
   ]
-  ;calc-diameter ;; Only need to calculate this at death!!
-  ;calc-cwood
+  calc-diameter ;; Only need to calculate this at death!!
+  calc-cwood
 end
 
 to reproduce [tsn]
@@ -176,6 +176,10 @@ to death
 end
 
 to disturbance
+  if random-float 1 < pfall [
+    set standing? false
+    set shape "logs"
+  ]
 end
 
 to set-params
@@ -255,6 +259,7 @@ to recruitment
   set live? true
   set standing? true
   set cwood 0
+  set pfall 0.25
 
   ifelse species-number = 0
   [
