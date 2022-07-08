@@ -118,6 +118,12 @@ to go
     set age-since-death age-since-death + 1
   ]
 
+  ;; Decay trees
+  ask turtles with [not live?] [
+    decay
+  ]
+
+  ;; Remove some of the dead trees
   ask turtles with [not live?] [
     remove-trees
   ]
@@ -182,10 +188,29 @@ to death
 end
 
 to disturbance
+  ;; Tree fall - random chance to fall in each turn once dead
+  ;; Can maybe be keyed to remaining biomass or time since death
   if random-float 1 < pfall [
     set standing? false
     set shape "logs"
   ]
+end
+
+to decay ;; combined decay function
+  ;; Return rate (used to adjust suitability)
+  let return-rate 0
+  ifelse standing? [
+    set return-rate (cwood * decay-rate-standing) / max-live-cwood
+    set cwood cwood * (1 - decay-rate-standing)
+  ] [
+    set return-rate (cwood * decay-rate-fallen) / max-live-cwood
+    set cwood cwood * (1 - decay-rate-fallen)
+  ]
+  ask patch-here [
+    set suitability replace-item 0 suitability ( item 0 suitability + ( return-rate * item 0 max-suitability ) )
+    set suitability replace-item 1 suitability ( item 1 suitability + ( return-rate * item 1 max-suitability ) )
+  ]
+
 end
 
 to remove-trees
@@ -329,8 +354,8 @@ GRAPHICS-WINDOW
 32
 0
 32
-0
-0
+1
+1
 1
 ticks
 30.0
