@@ -30,9 +30,11 @@ turtles-own [
   diam
   diam-asym
   diam-lrc
+
   ;; Cmass values
   cwood-coef
   cwood
+  max-live-cwood
 
   ;; Other individual characteristics
   age
@@ -116,6 +118,10 @@ to go
     set age-since-death age-since-death + 1
   ]
 
+  ask turtles with [not live?] [
+    remove-trees
+  ]
+
   tick
 end
 
@@ -168,7 +174,7 @@ to death
   if random-float 1 < pdeath [
     set live? false
     set age-since-death 0
-    ;set max-live-biomass biomass
+    set max-live-cwood cwood
     set color gray
     ;ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
   ]
@@ -179,6 +185,13 @@ to disturbance
   if random-float 1 < pfall [
     set standing? false
     set shape "logs"
+  ]
+end
+
+to remove-trees
+  if cwood / max-live-cwood < 0.1 [
+    ;ask patch-here [ set occupied? false ]
+    die
   ]
 end
 
