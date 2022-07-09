@@ -1,9 +1,12 @@
 globals [
   density
+  fire-nbs
 ]
 
 turtles-own [
   age
+  burning?
+  tree-nbs
 ]
 
 patches-own [
@@ -22,21 +25,57 @@ to setup
       sprout 1 [
         set shape "tree"
         set color green
+        set burning? false
       ]
       set occupied? true
     ]
+  ]
+
+  ask turtles [
+    set tree-nbs ( turtles-on neighbors ) with [ not burning? ]
   ]
   reset-ticks
 end
 
 to go
   spark
+  spread
+  extinguish
 end
 
 to spark
   ask one-of patches with [occupied?]
   [
     set pcolor red
+    ask turtles-here [
+      set burning? true
+      set color orange
+    ]
+  ]
+end
+
+to spread
+  while [any? turtles with [not burning?]] [
+
+    ask turtles with [ burning? ]
+    [
+      ask tree-nbs [
+        if random-float 1 < 0.5 [
+          set burning? true
+          set color orange
+        ]
+
+      ]
+    ]
+  ]
+end
+
+to extinguish
+  ask turtles with [burning?] [
+    if random-float 1 < 0.1 [
+      set color grey
+      set burning? false
+    ]
   ]
 end
 @#$#@#$#@
