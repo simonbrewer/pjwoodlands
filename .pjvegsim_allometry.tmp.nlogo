@@ -257,7 +257,7 @@ to set-params
   ;; Mortality
   set max-age [ 200 300 ]
   set mort-asym [ 1.0 1.0 ]
-  set mort-lrc[ -3.669 -3.768 ]
+  set mort-lrc[ -3.669 -.768 ]
 
 end
 
