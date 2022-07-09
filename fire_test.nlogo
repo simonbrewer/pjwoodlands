@@ -6,6 +6,7 @@ globals [
 turtles-own [
   age
   burning?
+  burning-nb?
   tree-nbs
 ]
 
@@ -26,21 +27,32 @@ to setup
         set shape "tree"
         set color green
         set burning? false
+        set burning-nb? false
       ]
       set occupied? true
     ]
   ]
 
-  ask turtles [
-    set tree-nbs ( turtles-on neighbors ) with [ not burning? ]
-  ]
   reset-ticks
 end
 
 to go
   spark
-  spread
-  extinguish
+
+  while [any? turtles with [ burning-nb? ]] [
+    spread
+    extinguish
+    find-neighbors
+  ]
+
+
+end
+
+to find-neighbors
+  ask turtles [
+    set tree-nbs ( turtles-on neighbors ) with [ not burning? ]
+    if any? ( turtles-on neighbors ) with [ burning? ] [ set burning-nb? true ]
+  ]
 end
 
 to spark
@@ -51,21 +63,15 @@ to spark
       set burning? true
       set color orange
     ]
+    ask turtles-on neighbors [ set burning-nb? true ]
   ]
 end
 
 to spread
-  while [any? turtles with [not burning?]] [
-
-    ask turtles with [ burning? ]
-    [
-      ask tree-nbs [
-        if random-float 1 < 0.5 [
-          set burning? true
-          set color orange
-        ]
-
-      ]
+  ask turtles with [burning-nb?] [
+    if random-float 1 < 0.5 [
+      set burning? true
+      set color orange
     ]
   ]
 end
@@ -73,8 +79,9 @@ end
 to extinguish
   ask turtles with [burning?] [
     if random-float 1 < 0.1 [
-      set color grey
-      set burning? false
+      ;set color grey
+      ;set burning? false
+      die
     ]
   ]
 end
