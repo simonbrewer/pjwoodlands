@@ -192,9 +192,9 @@ to death
     set max-live-cwood cwood
     set color gray
     ;ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
+    set dead-trees dead-trees + 1
   ]
 
-  set dead-trees dead-trees + 1
 
 end
 
@@ -307,6 +307,7 @@ end
 to recruitment
 
   set age 0
+  ;set age random 20
   set live? true
   set standing? true
   set cwood 0
@@ -569,6 +570,25 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot removed-trees"
+
+PLOT
+445
+460
+1050
+580
+Age distribution
+NIL
+NIL
+0.0
+100.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"pine" 1.0 1 -16777216 true "" "histogram [age] of turtles with [species-number = 0]"
+"juniper" 1.0 1 -2674135 true "" "histogram [age] of turtles with [species-number = 1]"
 
 @#$#@#$#@
 ## WHAT IS IT?
