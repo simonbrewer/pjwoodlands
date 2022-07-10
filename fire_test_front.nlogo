@@ -4,6 +4,7 @@ globals [
   density
   fire-front
   fire-size
+  all-fire-sizes
 ]
 
 turtles-own [
@@ -19,6 +20,7 @@ patches-own [
 to setup
   ca
   set density 0.7
+  set all-fire-sizes []
 
   ask patches [
     set occupied? false
@@ -41,7 +43,7 @@ end
 
 to go
 
-  repeat 10 [
+  repeat 50 [
     spark
     spread
     reset-trees
@@ -65,6 +67,7 @@ to spark
       set burning? true
       set color orange
       set fire-front turtle-set self
+      set fire-size fire-size + 1
     ]
   ]
 end
@@ -86,6 +89,7 @@ to spread
       set fire-front new-fire-front
     ]
   ]
+  set all-fire-sizes lput fire-size all-fire-sizes
 
 end
 
@@ -186,6 +190,24 @@ false
 "set-histogram-num-bars 10" ""
 PENS
 "default" 1.0 1 -16777216 true "" "histogram [flammability] of turtles"
+
+PLOT
+5
+250
+205
+400
+plot 1
+NIL
+NIL
+0.0
+200.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram all-fire-sizes"
 
 @#$#@#$#@
 ## WHAT IS IT?
