@@ -23,9 +23,15 @@ globals [
   mort-asym
   mort-lrc
 
+  ;; Trackers
   dead-trees
   new-trees
   removed-trees
+
+  ;; Fire variables
+  fire-front
+  fire-size
+  all-fire-sizes
 
 ]
 
@@ -51,6 +57,10 @@ turtles-own [
   decay-rate-standing
   decay-rate-fallen
   pfall ;;  prob of falling once dead
+
+  ;; Fire variables
+  flammability ;; Probability of igniting given burning neighbor
+  burning?
 ]
 
 patches-own [
@@ -63,6 +73,8 @@ patches-own [
 to setup
   ca
 
+  ;; List of all fires sizes
+  set all-fire-sizes []
   ;; Read in parameters
   set-params
 
@@ -98,8 +110,9 @@ to setup
   ]
 
   ;; Opens a monitor for tree 0
-  stop-inspecting-dead-agents
-  inspect turtle 0
+  ;stop-inspecting-dead-agents
+  ;inspect turtle 0
+
   reset-ticks
 end
 
@@ -110,7 +123,16 @@ to go
   set removed-trees 0
 
   if not any? turtles with [live?] [stop]
-  if ticks > 500 [stop]
+  if fire? and ticks > 200 [
+    repeat 10 [
+      calc-flammability
+      spark
+      spread
+      reset-trees
+    ]
+    stop
+  ]
+
   ask turtles with [live?] [
     grow
     if age > reproductive-age and any? neighbors with [not occupied?] [
@@ -233,6 +255,59 @@ to remove-trees
   ]
 end
 
+to calc-flammability
+  ;; Modified from per Baak model
+  ask turtles [
+    set flammability 0.025 + 0.0003 * (age / 5) ^ 2
+  ]
+end
+
+to spark
+  set fire-size 0
+  ask one-of patches with [occupied?]
+  [
+    set pcolor red
+    ask turtles-here [
+      set burning? true
+      set color orange
+      set fire-front turtle-set self
+      set fire-size fire-size + 1
+    ]
+  ]
+end
+
+to spread
+  while [ any? fire-front ] [
+    let new-fire-front turtle-set nobody
+
+    ask fire-front [
+      set pcolor red
+      ask ( turtles-on neighbors ) with [ not burning? ] [
+        if random-float 0.45 < flammability [
+          set burning? true
+          set color orange
+          set new-fire-front (turtle-set new-fire-front self) ;; extend the next round fron
+          set fire-size fire-size + 1
+        ]
+      ]
+      set fire-front new-fire-front
+    ]
+  ]
+  set all-fire-sizes lput fire-size all-fire-sizes
+
+end
+
+to reset-trees
+  ask turtles [
+    set burning? false
+    set color green
+  ]
+end
+
+to show-burn
+  ask turtles [ ht ]
+end
+
 to set-params
   ;; wc values from Guess
   set log-wc-mean -1.939
@@ -310,6 +385,7 @@ to recruitment
   ;set age random 20
   set live? true
   set standing? true
+  set burning? false
   set cwood 0
   set pfall 0.25
 
@@ -361,8 +437,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 0
 32
@@ -410,10 +486,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [wc] of patches"
 
 BUTTON
-130
-460
-193
-493
+55
+500
+118
+533
 NIL
 go
 T
@@ -589,6 +665,34 @@ false
 PENS
 "pine" 1.0 1 -16777216 true "" "histogram [age] of turtles with [species-number = 0]"
 "juniper" 1.0 1 -2674135 true "" "histogram [age] of turtles with [species-number = 1]"
+
+BUTTON
+130
+460
+227
+493
+NIL
+show-burn
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SWITCH
+130
+500
+233
+533
+fire?
+fire?
+1
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
