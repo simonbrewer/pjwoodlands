@@ -1,10 +1,14 @@
+extensions [ csv profiler ]
+
 globals [
   density
   fire-nbs
+
 ]
 
 turtles-own [
   age
+  flammability
   burning?
   burning-nb?
   tree-nbs
@@ -28,6 +32,8 @@ to setup
         set color green
         set burning? false
         set burning-nb? false
+        set age random 200
+        calc-flammability
       ]
       set occupied? true
     ]
@@ -39,18 +45,25 @@ end
 to go
   spark
 
+  ask turtles [
+    calc-flammability
+  ]
   while [any? turtles with [ burning-nb? ]] [
     spread
     extinguish
     find-neighbors
   ]
 
+end
 
+to calc-flammability
+  ;; Modified from per Baak model
+  set flammability 0.025 + 0.0003 * (age / 5) ^ 2
 end
 
 to find-neighbors
-  ask turtles [
-    set tree-nbs ( turtles-on neighbors ) with [ not burning? ]
+  ask turtles with [ not burning? ] [
+    ;set tree-nbs ( turtles-on neighbors ) with [ not burning? ]
     if any? ( turtles-on neighbors ) with [ burning? ] [ set burning-nb? true ]
   ]
 end
@@ -69,7 +82,7 @@ end
 
 to spread
   ask turtles with [burning-nb?] [
-    if random-float 1 < 0.5 [
+    if random-float 1 < flammability [
       set burning? true
       set color orange
     ]
@@ -78,12 +91,24 @@ end
 
 to extinguish
   ask turtles with [burning?] [
-    if random-float 1 < 0.1 [
+    if random-float 1 < 0.25 [
       ;set color grey
       ;set burning? false
       die
     ]
   ]
+end
+
+to profile
+  setup
+  profiler:start                                 ;; start profiling
+  repeat 10 [
+    setup
+    go
+  ]                               ;; run something you want to measure
+  profiler:stop                                  ;; stop profiling
+  csv:to-file "profiler_data.csv" profiler:data  ;; save the results
+  profiler:reset                                 ;; clear the data
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -146,6 +171,24 @@ NIL
 NIL
 NIL
 1
+
+PLOT
+12
+240
+212
+390
+plot 1
+NIL
+NIL
+0.0
+1.0
+0.0
+10.0
+true
+false
+"set-histogram-num-bars 10" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [flammability] of turtles"
 
 @#$#@#$#@
 ## WHAT IS IT?
