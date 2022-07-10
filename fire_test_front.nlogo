@@ -1,359 +1,125 @@
 extensions [ csv profiler ]
 
 globals [
-  ;; Parameters for deriving allometric equation (diameter)
-  diam-asym-mean
-  diam-lrc-mean
-  diam-asym-sd
-  diam-lrc-sd
-  diam-asym-wc
-  diam-lrc-wc
-  diam-corr
-
-  ;; Parameters for deriving CMass from diameter
-  cwood-mean
-  cwood-sd
-
-  ;; Mean / SD of water content
-  log-wc-mean
-  log-wc-sd
-
-  ;; Mortality coefficients
-  max-age
-  mort-asym
-  mort-lrc
-
-  dead-trees
-  new-trees
-  removed-trees
-
+  density
+  fire-front
+  fire-size
+  all-fire-sizes
 ]
 
 turtles-own [
-  ;; Allometric coefficients
-  diam
-  diam-asym
-  diam-lrc
-
-  ;; Cmass values
-  cwood-coef
-  cwood
-  max-live-cwood
-
-  ;; Other individual characteristics
   age
-  species
-  species-number
-  reproductive-age
-  live?
-  standing?
-  age-since-death
-  decay-rate-standing
-  decay-rate-fallen
-  pfall ;;  prob of falling once dead
+  flammability
+  burning?
 ]
 
 patches-own [
-  occupied? ;; Tree present or not
-  wc ;; Water content of soil (Guess units)
-  suitability
-  max-suitability
+  occupied?
 ]
 
 to setup
   ca
+  set density 0.7
+  set all-fire-sizes []
 
-  ;; Read in parameters
-  set-params
-
-  ;; Patch set up
   ask patches [
-    set pcolor white
     set occupied? false
-    set wc exp random-normal log-wc-mean log-wc-sd
-
-    ;; Patch suitability (not linked to wc atm)
-    let tmp-suitability-0 random-float 1 * ( pycor / max-pycor )
-    let tmp-suitability-1 random-float 1 * (( max-pycor - pycor ) / max-pycor)
-    set max-suitability (list tmp-suitability-0 tmp-suitability-1 )
-    set suitability max-suitability
-
-  ]
-
-  ;; ask patches [set pcolor scale-color red item 0 max-suitability 0 1 ]
-  ;; Create initial trees (50/50 pine or juniper)
-  ask n-of 50 patches [
-    sprout 1 [
-      ifelse item 0 max-suitability > item 1 max-suitability
-      [
-        set species-number 0
-        recruitment
-      ] [
-        set species-number 1
-        recruitment
+    set pcolor white
+    if random-float 1 < density
+    [
+      sprout 1 [
+        set shape "tree"
+        set color green
+        set burning? false
+        set age random 200
+        calc-flammability
       ]
-
+      set occupied? true
     ]
-    set occupied? true
   ]
 
-  ;; Opens a monitor for tree 0
-  stop-inspecting-dead-agents
-  inspect turtle 0
   reset-ticks
 end
 
 to go
 
-  set dead-trees 0
-  set new-trees 0
-  set removed-trees 0
-
-  if not any? turtles with [live?] [stop]
-  if ticks > 500 [stop]
-  ask turtles with [live?] [
-    grow
-    if age > reproductive-age and any? neighbors with [not occupied?] [
-      reproduce species-number
-    ]
-    death
+  repeat 50 [
+    spark
+    spread
+    reset-trees
   ]
 
-  ;; Disturb trees
-  ask turtles with [not live? and standing?] [
-    disturbance
-    ;harvest
-    set age-since-death age-since-death + 1
-  ]
-
-  ;; Decay trees
-  ask turtles with [not live?] [
-    decay
-  ]
-
-  ;; Remove some of the dead trees
-  ask turtles with [not live?] [
-    remove-trees
-  ]
-
-  tick
 end
 
-to grow
-  ;; Increase age
-  set age age + 1
-
-  if age < reproductive-age [
-    ;; Reduce suitability by ratio of age to reproductive age
-    let age-ratio age / reproductive-age
-    ask patch-here [
-      set suitability replace-item 0 suitability (item 0 max-suitability * (1 - age-ratio))
-      set suitability replace-item 1 suitability (item 1 max-suitability * (1 - age-ratio))
-    ]
-  ]
-
-  if age = reproductive-age [
-    set size 2
-    ask patch-here [
-      set suitability replace-item 0 suitability 0
-      set suitability replace-item 1 suitability 0
-    ]
-  ]
-  calc-diameter ;; Only need to calculate this at death!!
-  calc-cwood
+to calc-flammability
+  ;; Modified from per Baak model
+  ;ask turtles [
+    set flammability 0.025 + 0.0003 * (age / 5) ^ 2
+  ;]
 end
 
-to reproduce [tsn]
-  ask one-of neighbors with [not occupied?] [
-    if random-float 0.25 < item tsn suitability [
-      sprout 1 [
-        set species-number tsn
-        recruitment
+to spark
+  set fire-size 0
+  ask one-of patches with [occupied?]
+  [
+    set pcolor red
+    ask turtles-here [
+      set burning? true
+      set color orange
+      set fire-front turtle-set self
+      set fire-size fire-size + 1
+    ]
+  ]
+end
+
+to spread
+  while [ any? fire-front ] [
+    let new-fire-front turtle-set nobody
+
+    ask fire-front [
+      set pcolor red
+      ask ( turtles-on neighbors ) with [ not burning? ] [
+        if random-float 0.45 < flammability [
+          set burning? true
+          set color orange
+          set new-fire-front (turtle-set new-fire-front self) ;; extend the next round fron
+          set fire-size fire-size + 1
+        ]
       ]
-      set occupied? true
-      set new-trees new-trees + 1
+      set fire-front new-fire-front
     ]
   ]
+  set all-fire-sizes lput fire-size all-fire-sizes
+
 end
 
-to death
-  ;;let pdeath (age / item species-number max-age) ^ 5
-
-  let tmp-asym item species-number mort-asym
-  let tmp-lrc item species-number mort-lrc
-  set tmp-lrc tmp-lrc * 2
-  let pdeath tmp-asym * ( 1 - exp(- exp( tmp-lrc ) * age ))
-  ;print self
-  ;print age
-  ;print pdeath
-  if random-float 1 < pdeath [
-    set live? false
-    set age-since-death 0
-    set max-live-cwood cwood
-    set color gray
-    ;ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
+to reset-trees
+  ask turtles [
+    set burning? false
+    set color green
   ]
-
-  set dead-trees dead-trees + 1
-
-end
-
-to disturbance
-  ;; Tree fall - random chance to fall in each turn once dead
-  ;; Can maybe be keyed to remaining biomass or time since death
-  if random-float 1 < pfall [
-    set standing? false
-    set shape "logs"
-  ]
-end
-
-to decay ;; combined decay function
-  ;; Return rate (used to adjust suitability)
-  let return-rate 0
-  ifelse standing? [
-    set return-rate (cwood * decay-rate-standing) / max-live-cwood
-    set cwood cwood * (1 - decay-rate-standing)
-  ] [
-    set return-rate (cwood * decay-rate-fallen) / max-live-cwood
-    set cwood cwood * (1 - decay-rate-fallen)
-  ]
-  ask patch-here [
-    set suitability replace-item 0 suitability ( item 0 suitability + ( return-rate * item 0 max-suitability ) )
-    set suitability replace-item 1 suitability ( item 1 suitability + ( return-rate * item 1 max-suitability ) )
-  ]
-
-end
-
-to remove-trees
-  if cwood / max-live-cwood < 0.1 [
-    set removed-trees removed-trees + 1
-    ask patch-here [ set occupied? false ]
-    die
-
-  ]
-end
-
-to set-params
-  ;; wc values from Guess
-  set log-wc-mean -1.939
-  set log-wc-sd 0.562
-
-  ;; Parameters derived from NLME equations
-  set diam-asym-mean [ 0.145 0.031 ]
-  set diam-asym-sd [ 0.078 0.01 ]
-  set diam-asym-wc [ 0.029 0.006 ]
-
-  set diam-lrc-mean [ -3.57 -1.018 ]
-  set diam-lrc-sd [ 0.976 0.897 ]
-  set diam-lrc-wc [ -0.215 -0.593 ]
-
-  ;; Parameter correlations (asym vs. lrc)
-  set diam-corr [ -0.886 -0.866 ]
-
-  ;; log cwood to log diameter
-  set cwood-mean [ 1.123 1.381 ]
-  set cwood-sd [ 0.395 0.352 ]
-
-  ;; Mortality
-  set max-age [ 200 300 ]
-  set mort-asym [ 1.0 1.0 ]
-  set mort-lrc[ -3.669 -.768 ]
-
-end
-
-to get-diam-params
-  ;; Uses bivariate random normal equation from
-  ;; https://www.probabilitycourse.com/chapter5/5_3_2_bivariate_normal_dist.php
-
-  set diam-asym -9999
-  set diam-lrc 9999
-
-  while [ (diam-asym < 0) or (diam-lrc > 0) ] [ ;; check for reasonable parameter values
-    ;; 1. Generate z1 and z2
-    let z1 random-normal 0 1
-    let z2 random-normal 0 1
-
-    ;; 2. Convert z2 to correlated version
-    let tmp-corr item species-number diam-corr
-    set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
-
-    ;; 3. Back transform to asym and lrc
-    set diam-asym z1 * item species-number diam-asym-sd + item species-number diam-asym-mean
-    set diam-asym diam-asym + item species-number diam-asym-wc * [wc] of patch-here
-    set diam-lrc z1 * item species-number diam-lrc-sd + item species-number diam-lrc-mean
-    set diam-lrc diam-lrc + item species-number diam-lrc-wc * [wc] of patch-here
-
-  ]
-end
-
-to get-cwood-params
-  ;; Set coefficient to relate diameter to c-wood
-  set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
-end
-
-to calc-diameter
-  ;; Equation from https://stat.ethz.ch/R-manual/R-devel/library/stats/html/SSasympOrig.html
-  ;; Asym*(1 - exp(-exp(lrc)*input))
-  set diam diam-asym * ( 1 - exp(- exp( diam-lrc ) * age ))
-end
-
-to calc-cwood
-  ;; Could merge this into single statement
-  let ldiam ln diam
-  let lcwood ldiam * cwood-coef
-  set cwood exp lcwood
-end
-
-to recruitment
-
-  set age 0
-  set live? true
-  set standing? true
-  set cwood 0
-  set pfall 0.25
-
-  ifelse species-number = 0
-  [
-    set species "pine"
-    set shape "tree pine"
-    set color 57
-    set reproductive-age 20
-    set decay-rate-standing 0.01
-    set decay-rate-fallen 0.1
-    set pfall 0.25
-  ]
-  [
-    set species "juniper"
-    set shape "tree"
-    set color 53
-    set reproductive-age 30
-    set decay-rate-standing 0.01
-    set decay-rate-fallen 0.1
-    set pfall 0.25
-  ]
-  ;; Assign allometric coefficients
-  get-diam-params
-  get-cwood-params
-
 end
 
 to profile
-  setup                                          ;; set up the model
+  setup
   profiler:start                                 ;; start profiling
-  repeat 500 [ go ]                               ;; run something you want to measure
+  repeat 10 [
+    setup
+    go
+  ]                               ;; run something you want to measure
   profiler:stop                                  ;; stop profiling
   csv:to-file "profiler_data.csv" profiler:data  ;; save the results
   profiler:reset                                 ;; clear the data
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-5
+210
 10
-442
-448
+640
+441
 -1
 -1
-13.0
+6.5
 1
 10
 1
@@ -364,20 +130,20 @@ GRAPHICS-WINDOW
 1
 1
 0
-32
+64
 0
-32
-1
-1
+64
+0
+0
 1
 ticks
 30.0
 
 BUTTON
-55
-460
-121
-493
+35
+30
+101
+63
 NIL
 setup\n
 NIL
@@ -390,32 +156,14 @@ NIL
 NIL
 1
 
-PLOT
-450
-310
-650
-460
-Soil WC
-NIL
-NIL
-0.0
-1.0
-0.0
-10.0
-true
-false
-"set-plot-x-range 0 1\nset-plot-y-range 0 count patches\nset-histogram-num-bars 10" ""
-PENS
-"default" 1.0 1 -16777216 true "" "histogram [wc] of patches"
-
 BUTTON
-130
-460
-193
-493
+115
+30
+178
+63
 NIL
 go
-T
+NIL
 1
 T
 OBSERVER
@@ -426,149 +174,40 @@ NIL
 1
 
 PLOT
-450
-10
-650
-160
-Tree diameter (0)
+5
+80
+205
+230
+Flammability
 NIL
 NIL
 0.0
-10.0
-0.0
-0.25
-true
-false
-"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
-PENS
-"default" 1.0 0 -16777216 true "" ""
-
-PLOT
-450
-160
-650
-310
-Tree diameter (1)
-NIL
-NIL
-0.0
-10.0
-0.0
-0.1
-true
-false
-"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
-PENS
-"default" 1.0 0 -16777216 true "" ""
-
-PLOT
-650
-310
-850
-460
-CWood coefs
-NIL
-NIL
-0.0
-2.0
+1.0
 0.0
 10.0
 true
 false
 "set-histogram-num-bars 10" ""
 PENS
-"default" 1.0 1 -16777216 true "" "histogram [cwood-coef] of turtles with [species-number = 0]"
-"pen-1" 0.2 1 -2674135 true "" "histogram [cwood-coef] of turtles with [species-number = 1]"
+"default" 1.0 1 -16777216 true "" "histogram [flammability] of turtles"
 
 PLOT
-650
-10
-850
-160
-CWood (0)
+5
+250
+205
+400
+plot 1
 NIL
 NIL
 0.0
-10.0
-0.0
-0.5
-true
-false
-"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
-PENS
-"default" 1.0 0 -16777216 true "" ""
-
-PLOT
-650
-160
-850
-310
-CWood (1)
-NIL
-NIL
-0.0
-10.0
-0.0
-0.1
-true
-false
-"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
-PENS
-"default" 1.0 0 -16777216 true "" ""
-
-PLOT
-850
-10
-1050
-160
-Dead trees / tick
-NIL
-NIL
-0.0
-10.0
+200.0
 0.0
 10.0
 true
 false
 "" ""
 PENS
-"dead" 1.0 0 -16777216 true "" "plot dead-trees"
-
-PLOT
-850
-160
-1050
-310
-New trees / tick
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot new-trees"
-
-PLOT
-850
-310
-1050
-460
-Removed trees / tick
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot removed-trees"
+"default" 1.0 1 -16777216 true "" "histogram all-fire-sizes"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -773,34 +412,6 @@ true
 0
 Line -7500403 true 150 0 150 150
 
-logs
-false
-0
-Polygon -7500403 true true 15 241 75 271 89 245 135 271 150 246 195 271 285 121 235 96 255 61 195 31 181 55 135 31 45 181 49 183
-Circle -1 true false 132 222 66
-Circle -16777216 false false 132 222 66
-Circle -1 true false 72 222 66
-Circle -1 true false 102 162 66
-Circle -7500403 true true 222 72 66
-Circle -7500403 true true 192 12 66
-Circle -7500403 true true 132 12 66
-Circle -16777216 false false 102 162 66
-Circle -16777216 false false 72 222 66
-Circle -1 true false 12 222 66
-Circle -16777216 false false 30 240 30
-Circle -1 true false 42 162 66
-Circle -16777216 false false 42 162 66
-Line -16777216 false 195 30 105 180
-Line -16777216 false 255 60 165 210
-Circle -16777216 false false 12 222 66
-Circle -16777216 false false 90 240 30
-Circle -16777216 false false 150 240 30
-Circle -16777216 false false 120 180 30
-Circle -16777216 false false 60 180 30
-Line -16777216 false 195 270 285 120
-Line -16777216 false 15 240 45 180
-Line -16777216 false 45 180 135 30
-
 pentagon
 false
 0
@@ -877,14 +488,6 @@ Circle -7500403 true true 65 21 108
 Circle -7500403 true true 116 41 127
 Circle -7500403 true true 45 90 120
 Circle -7500403 true true 104 74 152
-
-tree pine
-false
-0
-Rectangle -6459832 true false 120 225 180 300
-Polygon -7500403 true true 150 240 240 270 150 135 60 270
-Polygon -7500403 true true 150 75 75 210 150 195 225 210
-Polygon -7500403 true true 150 7 90 157 150 142 210 157 150 7
 
 triangle
 false
