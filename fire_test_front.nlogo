@@ -2,17 +2,14 @@ extensions [ csv profiler ]
 
 globals [
   density
-  fire-nbs
-
   fire-front
+  fire-size
 ]
 
 turtles-own [
   age
   flammability
   burning?
-  burning-nb?
-  tree-nbs
 ]
 
 patches-own [
@@ -32,7 +29,6 @@ to setup
         set shape "tree"
         set color green
         set burning? false
-        set burning-nb? false
         set age random 200
         calc-flammability
       ]
@@ -45,9 +41,11 @@ end
 
 to go
 
-  spark
-
-  spread
+  repeat 10 [
+    spark
+    spread
+    reset-trees
+  ]
 
 end
 
@@ -58,14 +56,8 @@ to calc-flammability
   ;]
 end
 
-to find-neighbors
-  ask turtles with [ not burning? ] [
-    ;set tree-nbs ( turtles-on neighbors ) with [ not burning? ]
-    if any? ( turtles-on neighbors ) with [ burning? ] [ set burning-nb? true ]
-  ]
-end
-
 to spark
+  set fire-size 0
   ask one-of patches with [occupied?]
   [
     set pcolor red
@@ -82,12 +74,13 @@ to spread
     let new-fire-front turtle-set nobody
 
     ask fire-front [
-      ;set pcolor orange
+      set pcolor red
       ask ( turtles-on neighbors ) with [ not burning? ] [
-        if random-float 0.5 < flammability [
+        if random-float 0.45 < flammability [
           set burning? true
           set color orange
           set new-fire-front (turtle-set new-fire-front self) ;; extend the next round fron
+          set fire-size fire-size + 1
         ]
       ]
       set fire-front new-fire-front
@@ -96,13 +89,10 @@ to spread
 
 end
 
-to extinguish
-  ask turtles with [burning?] [
-    if random-float 1 < 0.25 [
-      ;set color grey
-      ;set burning? false
-      die
-    ]
+to reset-trees
+  ask turtles [
+    set burning? false
+    set color green
   ]
 end
 
@@ -146,10 +136,10 @@ ticks
 30.0
 
 BUTTON
-27
-110
-93
-143
+35
+30
+101
+63
 NIL
 setup\n
 NIL
@@ -163,10 +153,10 @@ NIL
 1
 
 BUTTON
-26
-175
-89
-208
+115
+30
+178
+63
 NIL
 go
 NIL
@@ -180,11 +170,11 @@ NIL
 1
 
 PLOT
-12
-240
-212
-390
-plot 1
+5
+80
+205
+230
+Flammability
 NIL
 NIL
 0.0
@@ -556,5 +546,5 @@ true
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 @#$#@#$#@
-0
+1
 @#$#@#$#@
