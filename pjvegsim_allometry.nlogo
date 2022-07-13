@@ -124,7 +124,7 @@ to go
 
   if not any? turtles with [live?] [stop]
   if fire? and ticks > 200 [
-    repeat 10 [
+    repeat 50 [
       calc-flammability
       spark
       spread
@@ -187,7 +187,7 @@ end
 
 to reproduce [tsn]
   ask one-of neighbors with [not occupied?] [
-    if random-float 0.25 < item tsn suitability [
+    if random-float 0.25 < item tsn suitability [ ;; NEEDS ADJUSTING
       sprout 1 [
         set species-number tsn
         recruitment
@@ -257,8 +257,14 @@ end
 
 to calc-flammability
   ;; Modified from per Baak model
-  ask turtles [
+  ask turtles with [live?] [
     set flammability 0.025 + 0.0003 * (age / 5) ^ 2
+  ]
+  ask turtles with [ not live? and standing? ] [
+    set flammability 0.25
+  ]
+  ask turtles with [ not live? and not standing? ] [
+    set flammability 0.5
   ]
 end
 
@@ -278,18 +284,29 @@ end
 
 to spread
   while [ any? fire-front ] [
+    ;; temp list to store new fire front
     let new-fire-front turtle-set nobody
 
     ask fire-front [
-      set pcolor red
       ask ( turtles-on neighbors ) with [ not burning? ] [
         if random-float 0.45 < flammability [
+          ask patch-here [ set pcolor red ]
           set burning? true
           set color orange
           set new-fire-front (turtle-set new-fire-front self) ;; extend the next round fron
           set fire-size fire-size + 1
         ]
       ]
+
+      ;; Test here to see if original point is extinguished ;; NEEDS WAY TO RESET CWOOD POST-FIRE
+      ;; if random-float 1 < 0.5 [
+      ;if random-float 0.5 < cwood [
+        ;;print self
+        ;set new-fire-front (turtle-set new-fire-front self) ;; extend the next round fron
+        ;set cwood cwood / 2
+      ;]
+
+      ;; Create new fire front for spread
       set fire-front new-fire-front
     ]
   ]
@@ -363,7 +380,10 @@ end
 
 to get-cwood-params
   ;; Set coefficient to relate diameter to c-wood
-  set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
+  set cwood-coef -9999
+  while [ cwood-coef < 0 ] [
+    set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
+  ]
 end
 
 to calc-diameter
@@ -690,7 +710,7 @@ SWITCH
 533
 fire?
 fire?
-1
+0
 1
 -1000
 
