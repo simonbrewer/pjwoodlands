@@ -68,10 +68,13 @@ patches-own [
   wc ;; Water content of soil (Guess units)
   suitability
   max-suitability
+  n-fires
 ]
 
 to setup
   ca
+  reset-ticks
+
 
   ;; List of all fires sizes
   set all-fire-sizes []
@@ -83,6 +86,7 @@ to setup
     set pcolor white
     set occupied? false
     set wc exp random-normal log-wc-mean log-wc-sd
+    set n-fires 0
 
     ;; Patch suitability (not linked to wc atm)
     let tmp-suitability-0 random-float 1 * ( pycor / max-pycor )
@@ -113,7 +117,6 @@ to setup
   ;stop-inspecting-dead-agents
   ;inspect turtle 0
 
-  reset-ticks
 end
 
 to go
@@ -124,6 +127,7 @@ to go
 
   if not any? turtles with [live?] [stop]
   if fire? and ticks > 200 [
+    ;;ask turtles with [not live?] [die] ;; test for fires with all dead trees removed
     repeat 50 [
       calc-flammability
       spark
@@ -273,6 +277,7 @@ to spark
   ask one-of patches with [occupied?]
   [
     set pcolor red
+    set n-fires n-fires + 1
     ask turtles-here [
       set burning? true
       set color orange
@@ -290,7 +295,10 @@ to spread
     ask fire-front [
       ask ( turtles-on neighbors ) with [ not burning? ] [
         if random-float 0.45 < flammability [
-          ask patch-here [ set pcolor red ]
+          ask patch-here [
+            set pcolor red
+            set n-fires n-fires + 1
+          ]
           set burning? true
           set color orange
           set new-fire-front (turtle-set new-fire-front self) ;; extend the next round fron
@@ -323,6 +331,9 @@ end
 
 to show-burn
   ask turtles [ ht ]
+  ask patches [
+    set pcolor scale-color gray n-fires 0 20
+  ]
 end
 
 to set-params
@@ -415,6 +426,7 @@ to recruitment
     set shape "tree pine"
     set color 57
     set reproductive-age 20
+    if ticks = 0 [ set age random ( reproductive-age - 1 ) ] ;; Only for initialization
     set decay-rate-standing 0.01
     set decay-rate-fallen 0.1
     set pfall 0.25
@@ -424,10 +436,12 @@ to recruitment
     set shape "tree"
     set color 53
     set reproductive-age 30
+    if ticks = 0 [ set age random ( reproductive-age - 1 ) ] ;; Only for initialization
     set decay-rate-standing 0.01
     set decay-rate-fallen 0.1
     set pfall 0.25
   ]
+
   ;; Assign allometric coefficients
   get-diam-params
   get-cwood-params
@@ -471,9 +485,9 @@ ticks
 30.0
 
 BUTTON
-55
+10
 460
-121
+76
 493
 NIL
 setup\n
@@ -506,9 +520,9 @@ PENS
 "default" 1.0 1 -16777216 true "" "histogram [wc] of patches"
 
 BUTTON
-55
+10
 500
-118
+73
 533
 NIL
 go
@@ -687,9 +701,9 @@ PENS
 "juniper" 1.0 1 -2674135 true "" "histogram [age] of turtles with [species-number = 1]"
 
 BUTTON
-130
+85
 460
-227
+182
 493
 NIL
 show-burn
@@ -704,9 +718,9 @@ NIL
 1
 
 SWITCH
-130
+85
 500
-233
+188
 533
 fire?
 fire?
