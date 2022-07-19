@@ -148,7 +148,6 @@ to go
   ;; Disturb trees
   ask turtles with [not live? and standing?] [
     disturbance
-    ;harvest
     set age-since-death age-since-death + 1
   ]
 
@@ -217,8 +216,10 @@ to death
     set age-since-death 0
     set max-live-cwood cwood
     set color gray
-    ;ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
     set dead-trees dead-trees + 1
+    ;; Uncomment these two lines to simulate immediate harvesting
+    ;ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
+    ;die
   ]
 
 
@@ -332,7 +333,7 @@ end
 to show-burn
   ask turtles [ ht ]
   ask patches [
-    set pcolor scale-color gray n-fires 0 20
+    set pcolor scale-color red n-fires 0 20
   ]
 end
 
@@ -446,6 +447,22 @@ to recruitment
   get-diam-params
   get-cwood-params
 
+end
+
+to-report mean-suitability-pine
+  ifelse ticks = 0 [
+    report 0
+  ] [
+    report mean [item 0 suitability] of patches
+  ]
+end
+
+to-report mean-suitability-juniper
+  ifelse ticks = 0 [
+    report 0
+  ] [
+    report mean [item 1 suitability] of patches
+  ]
 end
 
 to profile
@@ -682,7 +699,7 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot removed-trees"
 
 PLOT
-445
+450
 460
 1050
 580
@@ -727,6 +744,25 @@ fire?
 0
 1
 -1000
+
+PLOT
+205
+460
+445
+580
+plot 1
+NIL
+NIL
+0.0
+10.0
+0.0
+0.5
+true
+false
+"" ""
+PENS
+"pine" 1.0 0 -6565750 true "" "plot mean-suitability-pine"
+"juniper" 1.0 0 -13210332 true "" "plot mean-suitability-juniper"
 
 @#$#@#$#@
 ## WHAT IS IT?
