@@ -1,6 +1,4 @@
-;; comment for brian
-
-extensions [ csv profiler ]
+;extensions [ csv profiler ]
 
 globals [
   ;; Parameters for deriving allometric equation (diameter)
