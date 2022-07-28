@@ -1,4 +1,13 @@
-;; comment for brian and kurt and simon
+;; comment for all
+
+;;-	Made Trees and Foragers their own breeds
+;;-	Added a factor to punish the energy return from live trees as well as differentiate standing vs fallen dead tree returns (standing return slightly less energy than fallen which give full amount)
+;;-	Added agents and agent behaviors
+
+;;Needs remaining
+;;- validate all working
+;;- Put values on same unit scales & make them reasonable (truck space, wood per tree, energy from unit of wood per tree, annual energy need, etc.)
+
 
 extensions [ csv profiler ]
 
