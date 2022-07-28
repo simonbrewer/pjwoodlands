@@ -2,6 +2,9 @@
 
 extensions [ csv profiler ]
 
+breed [trees tree]
+breed [foragers forager]
+
 globals [
   ;; Parameters for deriving allometric equation (diameter)
   diam-asym-mean
@@ -35,9 +38,13 @@ globals [
   fire-size
   all-fire-sizes
 
+  ;; Agent tracking variables
+  all-agent-truckload-sum ;;running list of total truckload space used by each agent each turn
+  all-trips-home ;;running list of the total number of foraging trips taken per turn per agent
+  all-agent-wood-taken;;running list of total wood taken by each agent each turn
 ]
 
-turtles-own [
+trees-own [
   ;; Allometric coefficients
   diam
   diam-asym
@@ -59,10 +66,45 @@ turtles-own [
   decay-rate-standing
   decay-rate-fallen
   pfall ;;  prob of falling once dead
+  avail-megajoules ;;total energy stored in tree - eventually will be kg of material in tree * megajoule conversion factor (21 for pine 16 for juniper)
+  ;;right now this is c-wood * 21 or 16
+  extra-vol-multiplier ;the excess space (volume) taken up by the wood without extra processing (i.e., due to cut wood's abnormal shapes, not all of the
+  ;physical space in the truck will be used - there will be empty space - unless extra processing is done)
+  dist-from-home-base ;;patch distance from the home-base patch (all agents have same home base)
+  travel-cost-here-home ;;this is a temporary variable used within movement by individual agents that is the distance a patch is from where the agent is
+  ;;at the moment plus the distance the patch is from home base (so total travel cost to get to the patch and home)
+  RR ;;return rate obtained for an agent beginning at the home-base patch. RR is the energy available on the patch divided by the distance from home.
+  temp-RR ;;return rate for an agent who has left home, harvested from a patch, and is now looking for another. So energy on a patch divided by distance from current patch.
+  harvested-from? ;;this is a temporary state variable for use in developing the model just to make it easy to visualize which patches have been harvested
+  max-load-energy ;;the total kilojoules an agent can extract from the patch on their harvest (capped at energy from a max-truckload)
 
   ;; Fire variables
   flammability ;; Probability of igniting given burning neighbor
   burning?
+]
+
+foragers-own [
+  max-truckload-empty ;;max amount of firewood an agent can haul in one trip with an empty truck
+  truckload-space-taken ;;the amount of space taken up by firewood an agent is currently hauling
+  yearly-need ;;amount of kilojoules agent needs for the year
+  dist-travel-year ;;distance the agent travelled for the year
+  lifetime-travel ;;a list of the distances travelled each year
+  wood-taken-patch ;;amount of wood harvested from the single patch the agent is currently on
+  wood-taken ;;amount of wood harvested in a year
+  wood-taken-lifetime ;;amount of wood harvested over the full run
+  finished ;;bivariate TRUE / FAlSE for if agent has acquired total energy needs on the turn
+  energy-obtained ;;how many kilojoules of energy the agent has acquired within the year
+  trips-home-counter ;;a counter for how many trips back home (i.e., foraging bouts) an agent engages in during the year
+  truckload-taken ;;a list of how much space was used in the truck when the agent went home to unload
+  space-taken ;;how much space has been taken up in the truck from harvesting on the particular patch
+  wood-per-patch ;;list of how much wood was taken on a trip
+  ;;sum of wood-per-patch list is the total wood taken in a year. sum of truckload-taken is the total space of the truck used.
+  ;;If wood takes up no extra volume/space - sum of these two lists will be the same. But if wood takes up extra space (i.e., not post processed)
+  ;;then the sum of truckload-taken will be larger than the sum of wood-per-patch.
+  travel-dist-per-bout ;; the distance (in patches) that an agent can travel on each of their foraging bouts
+  bout-travel ;;the distance the agent has travelled on the active foraging bout
+  poss-trees ;;the set of trees it is possible for the agent to reach based on their travel distance limit
+  no-place ;;a binary recording if an agent can't get their full energy quota this turn
 ]
 
 patches-own [
@@ -71,6 +113,7 @@ patches-own [
   suitability
   max-suitability
   n-fires
+  home-base? ;;Is this patch the start point for foragers or no
 ]
 
 to setup
@@ -101,7 +144,7 @@ to setup
   ;; ask patches [set pcolor scale-color red item 0 max-suitability 0 1 ]
   ;; Create initial trees (50/50 pine or juniper)
   ask n-of 50 patches [
-    sprout 1 [
+    sprout-trees 1 [
       ifelse item 0 max-suitability > item 1 max-suitability
       [
         set species-number 0
@@ -119,6 +162,12 @@ to setup
   ;stop-inspecting-dead-agents
   ;inspect turtle 0
 
+  ;; Establish a patch as the start point for all foragers
+  ask patches [set home-base? FALSE]
+  ask patch 0 0 [set home-base? TRUE]
+
+  ;; Create human foragers
+  make-foragers
 end
 
 to go
@@ -127,7 +176,7 @@ to go
   set new-trees 0
   set removed-trees 0
 
-  if not any? turtles with [live?] [stop]
+  if not any? trees with [live?] [stop]
   if ticks > n-time-steps [
     if fire? [
       ;;ask turtles with [not live?] [die] ;; test for fires with all dead trees removed
@@ -141,7 +190,7 @@ to go
     stop
   ]
 
-  ask turtles with [live?] [
+  ask trees with [live?] [
     grow
     if age > reproductive-age and any? neighbors with [not occupied?] [
       reproduce species-number
@@ -150,19 +199,25 @@ to go
   ]
 
   ;; Disturb trees
-  ask turtles with [not live? and standing?] [
+  ask trees with [not live? and standing?] [
     disturbance
     set age-since-death age-since-death + 1
   ]
 
   ;; Decay trees
-  ask turtles with [not live?] [
+  ask trees with [not live?] [
     decay
   ]
 
   ;; Remove some of the dead trees
-  ask turtles with [not live?] [
+  ask trees with [not live?] [
     remove-trees
+  ]
+
+  ;; Begin forager behavior
+  if ticks > 19 [ ;; allow forest growth and death to happen before foragers begin operating
+  reset-state-vars
+  forage
   ]
 
   tick
@@ -188,14 +243,14 @@ to grow
       set suitability replace-item 1 suitability 0
     ]
   ]
-  calc-diameter ;; Only need to calculate this at death!!
+  calc-diameter ;; Only need to calculate this at death!! - KMW added note, we will need this for live trees if we are going to allow harvest of live trees
   calc-cwood
 end
 
 to reproduce [tsn]
   ask one-of neighbors with [not occupied?] [
     if random-float 0.25 < item tsn suitability [ ;; NEEDS ADJUSTING
-      sprout 1 [
+      sprout-trees 1 [
         set species-number tsn
         recruitment
       ]
@@ -244,9 +299,13 @@ to decay ;; combined decay function
   ifelse standing? [
     set return-rate (cwood * decay-rate-standing) / max-live-cwood
     set cwood cwood * (1 - decay-rate-standing)
+    if species = "pine" [set avail-megajoules ((cwood * 21) / 1.5)] ;; calculate the energy available, slight penalty for having to take down a standing dead tree
+    if species = "juniper" [set avail-megajoules ((cwood * 16) / 1.5)];; calculate the energy available, slight penalty for having to take down a standing dead tree
   ] [
     set return-rate (cwood * decay-rate-fallen) / max-live-cwood
     set cwood cwood * (1 - decay-rate-fallen)
+    if species = "pine" [set avail-megajoules ((cwood * 21) / 1)] ;; calculate the energy available, no penalty because tree is already fallen
+    if species = "juniper" [set avail-megajoules ((cwood * 16) / 1)];; calculate the energy available, no penalty because tree is already fallen
   ]
   ask patch-here [
     set suitability replace-item 0 suitability ( item 0 suitability + ( return-rate * item 0 max-suitability ) )
@@ -266,13 +325,13 @@ end
 
 to calc-flammability
   ;; Modified from per Baak model
-  ask turtles with [live?] [
+  ask trees with [live?] [
     set flammability 0.025 + 0.0003 * (age / 5) ^ 2
   ]
-  ask turtles with [ not live? and standing? ] [
+  ask trees with [ not live? and standing? ] [
     set flammability 0.25
   ]
-  ask turtles with [ not live? and not standing? ] [
+  ask trees with [ not live? and not standing? ] [
     set flammability 0.5
   ]
 end
@@ -283,7 +342,7 @@ to spark
   [
     set pcolor red
     set n-fires n-fires + 1
-    ask turtles-here [
+    ask trees-here [
       set burning? true
       set color orange
       set fire-front turtle-set self
@@ -298,7 +357,7 @@ to spread
     let new-fire-front turtle-set nobody
 
     ask fire-front [
-      ask ( turtles-on neighbors ) with [ not burning? ] [
+      ask ( trees-on neighbors ) with [ not burning? ] [
         if random-float 0.45 < flammability [
           ask patch-here [
             set pcolor red
@@ -328,17 +387,125 @@ to spread
 end
 
 to reset-trees
-  ask turtles [
+  ask trees [
     set burning? false
     set color green
   ]
 end
 
 to show-burn
-  ask turtles [ ht ]
+  ask trees [ ht ]
   ask patches [
     set pcolor scale-color red n-fires 0 20
   ]
+end
+
+to make-foragers
+  ask patch 0 0 [ ;make all foragers on the home-base patch
+    sprout-foragers num_foragers ;create the chosen number of foragers
+     [set shape "person" ;make agents person shape
+      set finished FALSE ;upon creation, no forager has already acquired their annual energy need
+      set max-truckload-empty Max_truck_capacity ;;units of wood a completely empty truck can haul
+      set yearly-need round (50000000 + random-float 20000000) ;;set yearly energy need in kilojoules. Here it is (right now it is actually in BTUs). Agents need
+        ;;50 to 70 million BTUs for annual heating as that is roughly 2.5 to 4 cords of wood which were the online estimates I saw for annual winter heating
+      set wood-taken-lifetime 0 ;;start the agent having taken no wood
+      set energy-obtained 0;;start having obtained no energy
+      set dist-travel-year 0 ;;start with having no distance travelled
+      set lifetime-travel [] ;make an empty list for the list of travel distances each year
+      set trips-home-counter 0 ;;track number of times agents have gone home with a full truck (or finished harvest for year). (internal self-check)
+      set truckload-taken [] ;start with an empty list of the amount of wood in the truck for each 'full' load
+      set space-taken 0
+      set truckload-space-taken 0
+      set wood-per-patch []
+      ifelse Travel_Distance_Limit?
+        [set travel-dist-per-bout round (15 + random-float 35)];if running the model where agents have a limit to the distance they can travel, agents have a total number of patches they can move
+        ;per foraging bout. Right now this is between 25 and 100 patches away from home. Double this would be the max move they could make because it would be up to 100 out and 100 back.
+        [set travel-dist-per-bout 50000];else if running the model with no distance limit, there is no need to worry about a travel distance limit so
+          ;;we will set it as 50,000. By which point agents will have had to have filled the truck
+       ; set poss-trees trees in-radius (travel-dist-per-bout / 2) ;list of possible trees an agent can get to, divide by 2 to account for the fact they need to go out and back
+       ; set poss-patches poss-patches with [home-base? = FALSE];drop home-base from possible foraging patches
+      set no-place FALSE
+    ]
+  ]
+
+end
+
+to reset-state-vars
+  ;this is an agent and patch submodel to reset state variables to start fresh each tick (year)
+  ask foragers [
+   set dist-travel-year 0 ;;reset the distance travelled for each new year back to 0
+   set truckload-space-taken 0 ;;start the year with an empty truckload
+   set finished FALSE ;;start the year without having met the necessary firewood quota
+   set wood-taken 0 ;start year having taken no wood
+   set wood-taken-patch 0;start year having taken no wood from any patch
+   set energy-obtained 0 ;start year having acquired no energy
+   set trips-home-counter 0 ;start having taken no trips in the year
+   set truckload-taken [] ;amount of truck space used per trip on each turn
+   set space-taken 0
+   set wood-per-patch []
+   set bout-travel travel-dist-per-bout ;;bout-travel is subtracted from, so start with the max distance an agent can go
+   set no-place FALSE
+  ]
+
+  ask trees [
+    set temp-RR 0 ;;patches should reset the temp-RR at the start of the turn because no agent has gone
+    set harvested-from? FALSE
+    set max-load-energy 0
+    set travel-cost-here-home 0
+  ]
+
+
+end
+
+to forage
+  ask trees [set temp-RR 0]
+  ;this is an agent sub-model for foraging to acquire firewood for the year
+  ask foragers [
+    find-best-location ;this submodel locates the best patch for the agent based on RR
+ ;   harvest ;this submodel has agents go about acquiring their energy for the year via wood harvesting
+  ]
+
+end
+
+to find-best-location
+  ;this is an agent sub-model for locating the best RR patch and moving there and recording distance travelled
+  set poss-trees trees in-radius (travel-dist-per-bout / 2) ;list of possible trees an agent can get to, divide by 2 to account for the fact they need to go out and back
+  calc-temp-RR
+  let best-tree max-one-of poss-trees [temp-RR] ;;identify the patch that gives the best return rate (which is a function of the kilojoules acquired from the available biomass and distance from home)
+  let start-patch patch-here ;remember temporarily the patch the agent begins on (for the first time they move in a turn, this will be the home-base patch)
+  if [temp-RR] of best-tree <= 0 [;if there is no wood left to go get, set finished true, set best-patch to home patch and go-home. Best patch to home patch is because the below move code still tries to happen.
+    set finished TRUE
+    set best-tree patch 0 0
+    set no-place TRUE
+    go-home
+  ]
+  move-to best-tree ;;move to the best patch
+  set dist-travel-year (dist-travel-year + distance patch-here) ;add this move distance to the distance travelled for the year
+  set bout-travel round (bout-travel - distance patch-here) ;;record how far the agent has gone to reach this patch
+
+end
+
+to calc-temp-RR
+  ;this is a patch submodel (called by agents) that sets a return rate raster for foraging based on only the patches the agent can access resultant from their travel distance limit
+  ;ask patches [set temp-RR 0];for each agent, have all patches begin with a 0 RR so that there aren't errors
+  ask poss-trees [ ;ask patches within a distance where the agent could get out to the patch and back home
+      ifelse avail-megajoules = 0
+      [set temp-RR 0];if there is no energy present, set this to 0
+    [ifelse distance patch 0 0 = 0 ;;cost distance. Megajoules divided by distance from home-base. This is the return rate the agent can get
+      [set temp-RR (avail-megajoules)] ;; a tree on patch 0 0 has no distance factored in
+      [set temp-RR (avail-megajoules / distance patch 0 0)]
+    ]
+    ;from the patches they can reach
+  ]
+
+end
+
+to harvest
+
+end
+
+to go-home
+
 end
 
 to set-params
@@ -413,6 +580,8 @@ to calc-cwood
   let ldiam ln diam
   let lcwood ldiam * cwood-coef
   set cwood exp lcwood
+  if species = "pine" [set avail-megajoules ((cwood * 21) / Live_wood_energy_penalty)] ;; calculate the energy available in the tree - but lower that energy total greatly since tree is alive
+  if species = "juniper" [set avail-megajoules ((cwood * 16) / Live_wood_energy_penalty)];; calculate the energy available in the tree - but lower that energy total greatly since tree is alive
 end
 
 to recruitment
@@ -424,6 +593,8 @@ to recruitment
   set burning? false
   set cwood 0
   set pfall 0.25
+  set dist-from-home-base distance patch 0 0 ;;know how far the patch is from home base - this is used by agents
+  set travel-cost-here-home 0;; no agents have moved so this value should be zero
 
   ifelse species-number = 0
   [
@@ -435,6 +606,8 @@ to recruitment
     set decay-rate-standing 0.01
     set decay-rate-fallen 0.1
     set pfall 0.25
+    set avail-megajoules ((cwood * 21) / Live_wood_energy_penalty) ;; adjust this once we have translated cwood into a volume estimate so we can do kg * 21 (~21 megajoules / kg)
+    set extra-vol-multiplier Excess_volume_taken_pinyon ;set the multiplier for how much extra space in the truck unprocessed pinyon takes up
   ]
   [
     set species "juniper"
@@ -445,6 +618,8 @@ to recruitment
     set decay-rate-standing 0.01
     set decay-rate-fallen 0.1
     set pfall 0.25
+    set avail-megajoules ((cwood * 16) / Live_wood_energy_penalty) ;; adjust this once we have translated cwood into a volume estimate so we can do kg * 16 (~16 megajoules / kg)
+    set extra-vol-multiplier Excess_volume_taken_juniper ;set the multiplier for how much extra space in the truck unprocessed pinyon takes up
   ]
 
   ;; Assign allometric coefficients
@@ -547,7 +722,7 @@ BUTTON
 533
 NIL
 go
-T
+NIL
 1
 T
 OBSERVER
@@ -571,7 +746,7 @@ NIL
 0.25
 true
 false
-"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
+"" "ask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -589,7 +764,7 @@ NIL
 0.1
 true
 false
-"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
+"" "ask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -609,8 +784,8 @@ true
 false
 "set-histogram-num-bars 10" ""
 PENS
-"default" 1.0 1 -16777216 true "" "histogram [cwood-coef] of turtles with [species-number = 0]"
-"pen-1" 0.2 1 -2674135 true "" "histogram [cwood-coef] of turtles with [species-number = 1]"
+"default" 1.0 1 -16777216 true "" "histogram [cwood-coef] of trees with [species-number = 0]"
+"pen-1" 0.2 1 -2674135 true "" "histogram [cwood-coef] of trees with [species-number = 1]"
 
 PLOT
 650
@@ -626,7 +801,7 @@ NIL
 0.5
 true
 false
-"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
+"" "ask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -644,7 +819,7 @@ NIL
 0.1
 true
 false
-"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
+"" "ask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -718,8 +893,8 @@ true
 false
 "" ""
 PENS
-"pine" 1.0 1 -16777216 true "" "histogram [age] of turtles with [species-number = 0]"
-"juniper" 1.0 1 -2674135 true "" "histogram [age] of turtles with [species-number = 1]"
+"pine" 1.0 1 -16777216 true "" "histogram [age] of trees with [species-number = 0]"
+"juniper" 1.0 1 -2674135 true "" "histogram [age] of trees with [species-number = 1]"
 
 BUTTON
 85
@@ -779,6 +954,107 @@ n-time-steps
 1000
 200.0
 10
+1
+NIL
+HORIZONTAL
+
+SLIDER
+15
+625
+300
+658
+Excess_volume_taken_pinyon
+Excess_volume_taken_pinyon
+0
+1
+0.1
+0.01
+1
+percent truck bed
+HORIZONTAL
+
+SLIDER
+15
+665
+300
+698
+Excess_volume_taken_juniper
+Excess_volume_taken_juniper
+0
+1
+0.3
+0.01
+1
+percent truck bed
+HORIZONTAL
+
+SLIDER
+15
+585
+187
+618
+num_foragers
+num_foragers
+0
+30
+3.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+15
+705
+247
+738
+Max_truck_capacity
+Max_truck_capacity
+0.20
+1.5
+0.5
+.010
+1
+cords (wood)
+HORIZONTAL
+
+SWITCH
+15
+745
+192
+778
+Travel_Distance_Limit?
+Travel_Distance_Limit?
+0
+1
+-1000
+
+SLIDER
+195
+585
+392
+618
+proportion_harvest_remain
+proportion_harvest_remain
+0
+0.3
+0.1
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+305
+625
+507
+658
+Live_wood_energy_penalty
+Live_wood_energy_penalty
+1
+10001
+10001.0
+50
 1
 NIL
 HORIZONTAL
@@ -1161,7 +1437,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
