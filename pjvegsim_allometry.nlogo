@@ -1,4 +1,4 @@
-;; comment for all
+;; comment for whole team
 
 ;;-	Made Trees and Foragers their own breeds
 ;;-	Added a factor to punish the energy return from live trees as well as differentiate standing vs fallen dead tree returns (standing return slightly less energy than fallen which give full amount)
