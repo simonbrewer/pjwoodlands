@@ -1,8 +1,19 @@
 ;; comment for brian and kurt and simon
+;; new updates with total biomass equations based on FIA data
+;; from Cunliffe et al; McIntire et al
 
 extensions [ csv profiler ]
 
 globals [
+  ;; Parameters for deriving allometric equation (height)
+  hgt-asym-mean
+  hgt-lrc-mean
+  hgt-asym-sd
+  hgt-lrc-sd
+  hgt-asym-wc
+  hgt-lrc-wc
+  hgt-corr
+
   ;; Parameters for deriving allometric equation (diameter)
   diam-asym-mean
   diam-lrc-mean
@@ -11,6 +22,15 @@ globals [
   diam-asym-wc
   diam-lrc-wc
   diam-corr
+
+  ;; Parameters for deriving allometric equation (crown area)
+  carea-asym-mean
+  carea-lrc-mean
+  carea-asym-sd
+  carea-lrc-sd
+  carea-asym-wc
+  carea-lrc-wc
+  carea-corr
 
   ;; Parameters for deriving CMass from diameter
   cwood-mean
@@ -39,9 +59,15 @@ globals [
 
 turtles-own [
   ;; Allometric coefficients
+  hgt
+  hgt-asym
+  hgt-lrc
   diam
   diam-asym
   diam-lrc
+  carea
+  carea-asym
+  carea-lrc
 
   ;; Cmass values
   cwood-coef
@@ -346,6 +372,20 @@ to set-params
   set log-wc-mean -1.939
   set log-wc-sd 0.562
 
+  ;; HEIGHT ;;
+  ;; Parameters derived from NLME equations
+  set hgt-asym-mean [ 0.145 0.031 ]
+  set hgt-asym-sd [ 0.078 0.01 ]
+  set hgt-asym-wc [ 0.029 0.006 ]
+
+  set hgt-lrc-mean [ -3.57 -1.018 ]
+  set hgt-lrc-sd [ 0.976 0.897 ]
+  set hgt-lrc-wc [ -0.215 -0.593 ]
+
+  ;; Parameter correlations (asym vs. lrc)
+  set hgt-corr [ -0.886 -0.866 ]
+
+  ;; DIAMETER ;;
   ;; Parameters derived from NLME equations
   set diam-asym-mean [ 0.145 0.031 ]
   set diam-asym-sd [ 0.078 0.01 ]
@@ -367,6 +407,31 @@ to set-params
   set mort-asym [ 1.0 1.0 ]
   set mort-lrc[ -3.669 -3.768 ]
 
+end
+
+to get-hgt-params
+  ;; Uses bivariate random normal equation from
+  ;; https://www.probabilitycourse.com/chapter5/5_3_2_bivariate_normal_dist.php
+
+  set hgt-asym -9999
+  set hgt-lrc 9999
+
+  while [ (hgt-asym < 0) or (hgt-lrc > 0) ] [ ;; check for reasonable parameter values
+    ;; 1. Generate z1 and z2
+    let z1 random-normal 0 1
+    let z2 random-normal 0 1
+
+    ;; 2. Convert z2 to correlated version
+    let tmp-corr item species-number hgt-corr
+    set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
+
+    ;; 3. Back transform to asym and lrc
+    set hgt-asym z1 * item species-number hgt-asym-sd + item species-number hgt-asym-mean
+    set hgt-asym hgt-asym + item species-number hgt-asym-wc * [wc] of patch-here
+    set hgt-lrc z1 * item species-number hgt-lrc-sd + item species-number hgt-lrc-mean
+    set hgt-lrc hgt-lrc + item species-number hgt-lrc-wc * [wc] of patch-here
+
+  ]
 end
 
 to get-diam-params
@@ -1161,7 +1226,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
