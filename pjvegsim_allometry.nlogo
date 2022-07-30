@@ -374,29 +374,36 @@ to set-params
 
   ;; HEIGHT ;;
   ;; Parameters derived from NLME equations
-  set hgt-asym-mean [ 0.145 0.031 ]
-  set hgt-asym-sd [ 0.078 0.01 ]
-  set hgt-asym-wc [ 0.029 0.006 ]
-
-  set hgt-lrc-mean [ -3.57 -1.018 ]
-  set hgt-lrc-sd [ 0.976 0.897 ]
-  set hgt-lrc-wc [ -0.215 -0.593 ]
-
+  set hgt-asym-mean [ 6.554 3.604 ]
+  set hgt-asym-sd [ 1.574 0.875 ]
+  set hgt-asym-wc [ 0.151 -0.732 ]
+  set hgt-lrc-mean [ -2.313 -1.564 ]
+  set hgt-lrc-sd [ 0.720 0.577 ]
+  set hgt-lrc-wc [ 0.191 0.504 ]
   ;; Parameter correlations (asym vs. lrc)
-  set hgt-corr [ -0.886 -0.866 ]
+  set hgt-corr [ -0.593 -0.876 ]
 
   ;; DIAMETER ;;
   ;; Parameters derived from NLME equations
   set diam-asym-mean [ 0.145 0.031 ]
   set diam-asym-sd [ 0.078 0.01 ]
   set diam-asym-wc [ 0.029 0.006 ]
-
   set diam-lrc-mean [ -3.57 -1.018 ]
   set diam-lrc-sd [ 0.976 0.897 ]
   set diam-lrc-wc [ -0.215 -0.593 ]
-
   ;; Parameter correlations (asym vs. lrc)
   set diam-corr [ -0.886 -0.866 ]
+
+  ;; CROWN AREA ;;
+  ;; Parameters derived from NLME equations
+  set carea-asym-mean [ 7.364 0.658 ]
+  set carea-asym-sd [ 3.338 0.446 ]
+  set carea-asym-wc [ 0.143 -0.071 ]
+  set carea-lrc-mean [ -3.841 -2.035 ]
+  set carea-lrc-sd [ 1.126 0.774 ]
+  set carea-lrc-wc [ -0.088 0.041 ]
+  ;; Parameter correlations (asym vs. lrc)
+  set carea-corr [ -0.832 -0.805 ]
 
   ;; log cwood to log diameter
   set cwood-mean [ 1.123 1.381 ]
