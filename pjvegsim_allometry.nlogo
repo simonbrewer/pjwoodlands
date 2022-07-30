@@ -466,6 +466,31 @@ to get-diam-params
   ]
 end
 
+to get-carea-params
+  ;; Uses bivariate random normal equation from
+  ;; https://www.probabilitycourse.com/chapter5/5_3_2_bivariate_normal_dist.php
+
+  set carea-asym -9999
+  set carea-lrc 9999
+
+  while [ (carea-asym < 0) or (carea-lrc > 0) ] [ ;; check for reasonable parameter values
+    ;; 1. Generate z1 and z2
+    let z1 random-normal 0 1
+    let z2 random-normal 0 1
+
+    ;; 2. Convert z2 to correlated version
+    let tmp-corr item species-number carea-corr
+    set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
+
+    ;; 3. Back transform to asym and lrc
+    set carea-asym z1 * item species-number carea-asym-sd + item species-number carea-asym-mean
+    set carea-asym carea-asym + item species-number carea-asym-wc * [wc] of patch-here
+    set carea-lrc z1 * item species-number carea-lrc-sd + item species-number carea-lrc-mean
+    set carea-lrc carea-lrc + item species-number carea-lrc-wc * [wc] of patch-here
+
+  ]
+end
+
 to get-cwood-params
   ;; Set coefficient to relate diameter to c-wood
   set cwood-coef -9999
