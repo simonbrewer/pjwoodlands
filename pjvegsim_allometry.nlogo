@@ -214,7 +214,9 @@ to grow
       set suitability replace-item 1 suitability 0
     ]
   ]
-  calc-diameter ;; Only need to calculate this at death!!
+  calc-diam ;; Only need to calculate this at death?
+  calc-hgt
+  calc-carea
   calc-cwood
 end
 
@@ -499,10 +501,22 @@ to get-cwood-params
   ]
 end
 
-to calc-diameter
+to calc-diam
   ;; Equation from https://stat.ethz.ch/R-manual/R-devel/library/stats/html/SSasympOrig.html
   ;; Asym*(1 - exp(-exp(lrc)*input))
   set diam diam-asym * ( 1 - exp(- exp( diam-lrc ) * age ))
+end
+
+to calc-hgt
+  ;; Equation from https://stat.ethz.ch/R-manual/R-devel/library/stats/html/SSasympOrig.html
+  ;; Asym*(1 - exp(-exp(lrc)*input))
+  set hgt hgt-asym * ( 1 - exp(- exp( hgt-lrc ) * age ))
+end
+
+to calc-carea
+  ;; Equation from https://stat.ethz.ch/R-manual/R-devel/library/stats/html/SSasympOrig.html
+  ;; Asym*(1 - exp(-exp(lrc)*input))
+  set carea carea-asym * ( 1 - exp(- exp( carea-lrc ) * age ))
 end
 
 to calc-cwood
@@ -546,6 +560,8 @@ to recruitment
 
   ;; Assign allometric coefficients
   get-diam-params
+  get-hgt-params
+  get-carea-params
   get-cwood-params
 
 end
@@ -620,10 +636,10 @@ NIL
 1
 
 PLOT
-450
-310
-650
+1055
 460
+1255
+610
 Soil WC
 NIL
 NIL
@@ -691,9 +707,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-650
+1050
 310
-850
+1250
 460
 CWood coefs
 NIL
@@ -710,9 +726,9 @@ PENS
 "pen-1" 0.2 1 -2674135 true "" "histogram [cwood-coef] of turtles with [species-number = 1]"
 
 PLOT
-650
+1050
 10
-850
+1250
 160
 CWood (0)
 NIL
@@ -728,9 +744,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-650
+1050
 160
-850
+1250
 310
 CWood (1)
 NIL
@@ -746,10 +762,10 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-850
-10
-1050
-160
+450
+310
+650
+460
 Dead trees / tick
 NIL
 NIL
@@ -764,10 +780,10 @@ PENS
 "dead" 1.0 0 -16777216 true "" "plot dead-trees"
 
 PLOT
-850
-160
-1050
+650
 310
+850
+460
 New trees / tick
 NIL
 NIL
@@ -879,6 +895,78 @@ n-time-steps
 1
 NIL
 HORIZONTAL
+
+PLOT
+650
+10
+850
+160
+Tree height (0)
+NIL
+NIL
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks hgt\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+650
+160
+850
+310
+Tree height (1)
+NIL
+NIL
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks hgt\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+850
+10
+1050
+160
+Tree crown area (0)
+NIL
+NIL
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks carea\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+850
+160
+1050
+310
+Tree crown area (1)
+NIL
+NIL
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks carea\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
 
 @#$#@#$#@
 ## WHAT IS IT?
