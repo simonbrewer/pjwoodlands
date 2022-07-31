@@ -36,6 +36,12 @@ globals [
   cwood-mean
   cwood-sd
 
+  ;; Parameters for deriving CMass from height and carea
+  cwood-hgt-coef-a
+  cwood-hgt-coef-b
+  cwood-carea-coef-a
+  cwood-carea-coef-b
+
   ;; Mean / SD of water content
   log-wc-mean
   log-wc-sd
@@ -217,7 +223,7 @@ to grow
   calc-diam ;; Only need to calculate this at death?
   calc-hgt
   calc-carea
-  calc-cwood
+  calc-cwood-carea
 end
 
 to reproduce [tsn]
@@ -410,6 +416,10 @@ to set-params
   ;; log cwood to log diameter
   set cwood-mean [ 1.123 1.381 ]
   set cwood-sd [ 0.395 0.352 ]
+  set cwood-hgt-coef-a [ 0.971 0.773 ]
+  set cwood-hgt-coef-b [ 2.563 4.347 ]
+  set cwood-carea-coef-a [ -6.099 0 ] ;; Change first val to zero??
+  set cwood-carea-coef-b [ 10.144 9.989 ]
 
   ;; Mortality
   set max-age [ 200 300 ]
@@ -519,12 +529,34 @@ to calc-carea
   set carea carea-asym * ( 1 - exp(- exp( carea-lrc ) * age ))
 end
 
-to calc-cwood
+to calc-cwood ;; place holder
   ;; Could merge this into single statement
   let ldiam ln diam
   let lcwood ldiam * cwood-coef
   set cwood exp lcwood
 end
+
+to calc-cwood-carea
+  ;; Could merge this into single statement
+  let a item species-number cwood-carea-coef-a
+  let b item species-number cwood-carea-coef-b
+  set cwood a + b * carea
+end
+
+to calc-cwood-hgt
+  ;; Could merge this into single statement
+  let a item species-number cwood-hgt-coef-a
+  let b item species-number cwood-hgt-coef-b
+  set cwood a * carea ^ b
+end
+
+;to calc-cwood
+;  OLD VERSION BASED ON GUESS OUTPUT/NLME
+;  ;; Could merge this into single statement
+;  let ldiam ln diam
+;  let lcwood ldiam * cwood-coef
+;  set cwood exp lcwood
+;end
 
 to recruitment
 
