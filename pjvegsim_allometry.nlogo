@@ -434,7 +434,7 @@ to make-foragers
       ifelse Travel_Distance_Limit?
         [set travel-dist-per-bout round (15 + random-float 50)];if running the model where agents have a limit to the distance they can travel, agents have a total number of patches they can move
         ;per foraging bout. Right now this is between 25 and 100 patches away from home. Double this would be the max move they could make because it would be up to 100 out and 100 back.
-        [set travel-dist-per-bout 50000];else if running the model with no distance limit, there is no need to worry about a travel distance limit so
+        [set travel-dist-per-bout 100];else if running the model with no distance limit, there is no need to worry about a travel distance limit so
           ;;we will set it as 50,000. By which point agents will have had to have filled the truck
        ; set poss-trees trees in-radius (travel-dist-per-bout / 2) ;list of possible trees an agent can get to, divide by 2 to account for the fact they need to go out and back
        ; set poss-patches poss-patches with [home-base? = FALSE];drop home-base from possible foraging patches
@@ -742,7 +742,7 @@ to calc-cwood
   let ldiam ln diam
   let lcwood ldiam * cwood-coef
   set cwood exp lcwood
-  set avail-megajoules ((cwood * mj-energy-multiplier) / Live_wood_energy_penalty) ;; calculate the energy available in the tree - but lower that energy total greatly since tree is alive
+  set avail-megajoules ((cwood * mj-energy-multiplier) * Live_wood_energy) ;; calculate the energy available in the tree - but lower that energy total greatly since tree is alive
 end
 
 to recruitment
@@ -768,7 +768,7 @@ to recruitment
     set decay-rate-fallen 0.1
     set pfall 0.25
     set mj-energy-multiplier 21
-    set avail-megajoules ((cwood * mj-energy-multiplier) / Live_wood_energy_penalty) ;; adjust this once we have translated cwood into a volume estimate so we can do kg * 21 (~21 megajoules / kg)
+    set avail-megajoules ((cwood * mj-energy-multiplier) * Live_wood_energy) ;; adjust this once we have translated cwood into a volume estimate so we can do kg * 21 (~21 megajoules / kg)
     set extra-vol-multiplier Excess_volume_taken_pinyon ;set the multiplier for how much extra space in the truck unprocessed pinyon takes up
   ]
   [
@@ -781,7 +781,7 @@ to recruitment
     set decay-rate-fallen 0.1
     set pfall 0.25
     set mj-energy-multiplier 16
-    set avail-megajoules ((cwood * mj-energy-multiplier) / Live_wood_energy_penalty) ;; adjust this once we have translated cwood into a volume estimate so we can do kg * 16 (~16 megajoules / kg)
+    set avail-megajoules ((cwood * mj-energy-multiplier) * Live_wood_energy) ;; adjust this once we have translated cwood into a volume estimate so we can do kg * 16 (~16 megajoules / kg)
     set extra-vol-multiplier Excess_volume_taken_juniper ;set the multiplier for how much extra space in the truck unprocessed pinyon takes up
   ]
 
@@ -1160,7 +1160,7 @@ num_foragers
 num_foragers
 0
 30
-3.0
+2.0
 1
 1
 NIL
@@ -1188,7 +1188,7 @@ SWITCH
 778
 Travel_Distance_Limit?
 Travel_Distance_Limit?
-0
+1
 1
 -1000
 
@@ -1210,16 +1210,16 @@ HORIZONTAL
 SLIDER
 305
 625
-507
+527
 658
-Live_wood_energy_penalty
-Live_wood_energy_penalty
+Live_wood_energy
+Live_wood_energy
+0
 1
-10001
-10001.0
-50
+0.001
+0.001
 1
-NIL
+% of total
 HORIZONTAL
 
 PLOT
