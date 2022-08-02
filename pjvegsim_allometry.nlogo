@@ -103,6 +103,9 @@ patches-own [
   suitability
   max-suitability
   n-fires
+  stand-cwood-live
+  stand-cwood-dead-standing
+  stand-cwood-dead-fallen
 ]
 
 to setup
@@ -196,6 +199,9 @@ to go
   ask turtles with [not live?] [
     remove-trees
   ]
+
+  ;; Update stand
+  update-stand
 
   tick
 end
@@ -598,6 +604,16 @@ to recruitment
 
 end
 
+to update-stand
+  ask patches [
+    set stand-cwood-live sum [cwood] of turtles in-radius 10 with [ live? ]
+    set stand-cwood-dead-standing sum [cwood] of turtles in-radius 10 with [ not live? and standing? ]
+    set stand-cwood-dead-fallen sum [cwood] of turtles in-radius 10 with [ not live? and not standing? ]
+    set pcolor scale-color green stand-cwood-dead-standing 0 1000
+  ]
+
+end
+
 to-report mean-suitability-pine
   ifelse ticks = 0 [
     report 0
@@ -668,10 +684,10 @@ NIL
 1
 
 PLOT
-1055
+1050
 460
-1255
-610
+1250
+580
 Soil WC
 NIL
 NIL
