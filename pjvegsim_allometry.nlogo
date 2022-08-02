@@ -1,8 +1,19 @@
 ;; comment for brian and kurt and simon
+;; new updates with total biomass equations based on FIA data
+;; from Cunliffe et al; McIntire et al
 
 extensions [ csv profiler ]
 
 globals [
+  ;; Parameters for deriving allometric equation (height)
+  hgt-asym-mean
+  hgt-lrc-mean
+  hgt-asym-sd
+  hgt-lrc-sd
+  hgt-asym-wc
+  hgt-lrc-wc
+  hgt-corr
+
   ;; Parameters for deriving allometric equation (diameter)
   diam-asym-mean
   diam-lrc-mean
@@ -12,9 +23,24 @@ globals [
   diam-lrc-wc
   diam-corr
 
+  ;; Parameters for deriving allometric equation (crown area)
+  carea-asym-mean
+  carea-lrc-mean
+  carea-asym-sd
+  carea-lrc-sd
+  carea-asym-wc
+  carea-lrc-wc
+  carea-corr
+
   ;; Parameters for deriving CMass from diameter
   cwood-mean
   cwood-sd
+
+  ;; Parameters for deriving CMass from height and carea
+  cwood-hgt-coef-a
+  cwood-hgt-coef-b
+  cwood-carea-coef-a
+  cwood-carea-coef-b
 
   ;; Mean / SD of water content
   log-wc-mean
@@ -39,9 +65,15 @@ globals [
 
 turtles-own [
   ;; Allometric coefficients
+  hgt
+  hgt-asym
+  hgt-lrc
   diam
   diam-asym
   diam-lrc
+  carea
+  carea-asym
+  carea-lrc
 
   ;; Cmass values
   cwood-coef
@@ -71,6 +103,9 @@ patches-own [
   suitability
   max-suitability
   n-fires
+  stand-cwood-live
+  stand-cwood-dead-standing
+  stand-cwood-dead-fallen
 ]
 
 to setup
@@ -165,6 +200,9 @@ to go
     remove-trees
   ]
 
+  ;; Update stand
+  update-stand
+
   tick
 end
 
@@ -188,8 +226,10 @@ to grow
       set suitability replace-item 1 suitability 0
     ]
   ]
-  calc-diameter ;; Only need to calculate this at death!!
-  calc-cwood
+  calc-diam ;; Only need to calculate this at death?
+  calc-hgt
+  calc-carea
+  calc-cwood-carea
 end
 
 to reproduce [tsn]
@@ -346,27 +386,77 @@ to set-params
   set log-wc-mean -1.939
   set log-wc-sd 0.562
 
+  ;; HEIGHT ;;
+  ;; Parameters derived from NLME equations
+  set hgt-asym-mean [ 6.554 3.604 ]
+  set hgt-asym-sd [ 1.574 0.875 ]
+  set hgt-asym-wc [ 0.151 -0.732 ]
+  set hgt-lrc-mean [ -2.313 -1.564 ]
+  set hgt-lrc-sd [ 0.720 0.577 ]
+  set hgt-lrc-wc [ 0.191 0.504 ]
+  ;; Parameter correlations (asym vs. lrc)
+  set hgt-corr [ -0.593 -0.876 ]
+
+  ;; DIAMETER ;;
   ;; Parameters derived from NLME equations
   set diam-asym-mean [ 0.145 0.031 ]
   set diam-asym-sd [ 0.078 0.01 ]
   set diam-asym-wc [ 0.029 0.006 ]
-
   set diam-lrc-mean [ -3.57 -1.018 ]
   set diam-lrc-sd [ 0.976 0.897 ]
   set diam-lrc-wc [ -0.215 -0.593 ]
-
   ;; Parameter correlations (asym vs. lrc)
   set diam-corr [ -0.886 -0.866 ]
+
+  ;; CROWN AREA ;;
+  ;; Parameters derived from NLME equations
+  set carea-asym-mean [ 7.364 0.658 ]
+  set carea-asym-sd [ 3.338 0.446 ]
+  set carea-asym-wc [ 0.143 -0.071 ]
+  set carea-lrc-mean [ -3.841 -2.035 ]
+  set carea-lrc-sd [ 1.126 0.774 ]
+  set carea-lrc-wc [ -0.088 0.041 ]
+  ;; Parameter correlations (asym vs. lrc)
+  set carea-corr [ -0.832 -0.805 ]
 
   ;; log cwood to log diameter
   set cwood-mean [ 1.123 1.381 ]
   set cwood-sd [ 0.395 0.352 ]
+  set cwood-hgt-coef-a [ 0.971 0.773 ]
+  set cwood-hgt-coef-b [ 2.563 4.347 ]
+  set cwood-carea-coef-a [ -6.099 0 ] ;; Change first val to zero??
+  set cwood-carea-coef-b [ 10.144 9.989 ]
 
   ;; Mortality
   set max-age [ 200 300 ]
   set mort-asym [ 1.0 1.0 ]
   set mort-lrc[ -3.669 -3.768 ]
 
+end
+
+to get-hgt-params
+  ;; Uses bivariate random normal equation from
+  ;; https://www.probabilitycourse.com/chapter5/5_3_2_bivariate_normal_dist.php
+
+  set hgt-asym -9999
+  set hgt-lrc 9999
+
+  while [ (hgt-asym < 0) or (hgt-lrc > 0) ] [ ;; check for reasonable parameter values
+    ;; 1. Generate z1 and z2
+    let z1 random-normal 0 1
+    let z2 random-normal 0 1
+
+    ;; 2. Convert z2 to correlated version
+    let tmp-corr item species-number hgt-corr
+    set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
+
+    ;; 3. Back transform to asym and lrc
+    set hgt-asym z1 * item species-number hgt-asym-sd + item species-number hgt-asym-mean
+    set hgt-asym hgt-asym + item species-number hgt-asym-wc * [wc] of patch-here
+    set hgt-lrc z1 * item species-number hgt-lrc-sd + item species-number hgt-lrc-mean
+    set hgt-lrc hgt-lrc + item species-number hgt-lrc-wc * [wc] of patch-here
+
+  ]
 end
 
 to get-diam-params
@@ -394,6 +484,31 @@ to get-diam-params
   ]
 end
 
+to get-carea-params
+  ;; Uses bivariate random normal equation from
+  ;; https://www.probabilitycourse.com/chapter5/5_3_2_bivariate_normal_dist.php
+
+  set carea-asym -9999
+  set carea-lrc 9999
+
+  while [ (carea-asym < 0) or (carea-lrc > 0) ] [ ;; check for reasonable parameter values
+    ;; 1. Generate z1 and z2
+    let z1 random-normal 0 1
+    let z2 random-normal 0 1
+
+    ;; 2. Convert z2 to correlated version
+    let tmp-corr item species-number carea-corr
+    set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
+
+    ;; 3. Back transform to asym and lrc
+    set carea-asym z1 * item species-number carea-asym-sd + item species-number carea-asym-mean
+    set carea-asym carea-asym + item species-number carea-asym-wc * [wc] of patch-here
+    set carea-lrc z1 * item species-number carea-lrc-sd + item species-number carea-lrc-mean
+    set carea-lrc carea-lrc + item species-number carea-lrc-wc * [wc] of patch-here
+
+  ]
+end
+
 to get-cwood-params
   ;; Set coefficient to relate diameter to c-wood
   set cwood-coef -9999
@@ -402,18 +517,52 @@ to get-cwood-params
   ]
 end
 
-to calc-diameter
+to calc-diam
   ;; Equation from https://stat.ethz.ch/R-manual/R-devel/library/stats/html/SSasympOrig.html
   ;; Asym*(1 - exp(-exp(lrc)*input))
   set diam diam-asym * ( 1 - exp(- exp( diam-lrc ) * age ))
 end
 
-to calc-cwood
+to calc-hgt
+  ;; Equation from https://stat.ethz.ch/R-manual/R-devel/library/stats/html/SSasympOrig.html
+  ;; Asym*(1 - exp(-exp(lrc)*input))
+  set hgt hgt-asym * ( 1 - exp(- exp( hgt-lrc ) * age ))
+end
+
+to calc-carea
+  ;; Equation from https://stat.ethz.ch/R-manual/R-devel/library/stats/html/SSasympOrig.html
+  ;; Asym*(1 - exp(-exp(lrc)*input))
+  set carea carea-asym * ( 1 - exp(- exp( carea-lrc ) * age ))
+end
+
+to calc-cwood ;; place holder
   ;; Could merge this into single statement
   let ldiam ln diam
   let lcwood ldiam * cwood-coef
   set cwood exp lcwood
 end
+
+to calc-cwood-carea
+  ;; Could merge this into single statement
+  let a item species-number cwood-carea-coef-a
+  let b item species-number cwood-carea-coef-b
+  set cwood a + b * carea
+end
+
+to calc-cwood-hgt
+  ;; Could merge this into single statement
+  let a item species-number cwood-hgt-coef-a
+  let b item species-number cwood-hgt-coef-b
+  set cwood a * carea ^ b
+end
+
+;to calc-cwood
+;  OLD VERSION BASED ON GUESS OUTPUT/NLME
+;  ;; Could merge this into single statement
+;  let ldiam ln diam
+;  let lcwood ldiam * cwood-coef
+;  set cwood exp lcwood
+;end
 
 to recruitment
 
@@ -449,7 +598,19 @@ to recruitment
 
   ;; Assign allometric coefficients
   get-diam-params
+  get-hgt-params
+  get-carea-params
   get-cwood-params
+
+end
+
+to update-stand
+  ask patches [
+    set stand-cwood-live sum [cwood] of turtles in-radius 10 with [ live? ]
+    set stand-cwood-dead-standing sum [cwood] of turtles in-radius 10 with [ not live? and standing? ]
+    set stand-cwood-dead-fallen sum [cwood] of turtles in-radius 10 with [ not live? and not standing? ]
+    set pcolor scale-color green stand-cwood-dead-standing 0 1000
+  ]
 
 end
 
@@ -523,10 +684,10 @@ NIL
 1
 
 PLOT
-450
-310
-650
+1050
 460
+1250
+580
 Soil WC
 NIL
 NIL
@@ -594,9 +755,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-650
+1050
 310
-850
+1250
 460
 CWood coefs
 NIL
@@ -613,9 +774,9 @@ PENS
 "pen-1" 0.2 1 -2674135 true "" "histogram [cwood-coef] of turtles with [species-number = 1]"
 
 PLOT
-650
+1050
 10
-850
+1250
 160
 CWood (0)
 NIL
@@ -631,9 +792,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-650
+1050
 160
-850
+1250
 310
 CWood (1)
 NIL
@@ -649,10 +810,10 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-850
-10
-1050
-160
+450
+310
+650
+460
 Dead trees / tick
 NIL
 NIL
@@ -667,10 +828,10 @@ PENS
 "dead" 1.0 0 -16777216 true "" "plot dead-trees"
 
 PLOT
-850
-160
-1050
+650
 310
+850
+460
 New trees / tick
 NIL
 NIL
@@ -782,6 +943,78 @@ n-time-steps
 1
 NIL
 HORIZONTAL
+
+PLOT
+650
+10
+850
+160
+Tree height (0)
+NIL
+NIL
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks hgt\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+650
+160
+850
+310
+Tree height (1)
+NIL
+NIL
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks hgt\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+850
+10
+1050
+160
+Tree crown area (0)
+NIL
+NIL
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" "ask turtles with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks carea\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+850
+160
+1050
+310
+Tree crown area (1)
+NIL
+NIL
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" "ask turtles with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks carea\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1161,7 +1394,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
