@@ -152,6 +152,7 @@ foragers-own [
   extra-year-travel ;;the additional time/distance an agent will spend if they are not solely time minimizing
   extra-energy-obtained;; the additional energy a forager has obtained from engaging in some percentage of energy maximizing
   total-extra-energy-obtained
+  t-option-trees
 ]
 
 patches-own [
@@ -487,6 +488,7 @@ to make-foragers
        ; set poss-patches poss-patches with [home-base? = FALSE];drop home-base from possible foraging patches
       set no-place FALSE
       set total-extra-energy-obtained [] ;;make an empty list
+      set extra-energy-obtained 0
     ]
   ]
 
@@ -507,7 +509,7 @@ to reset-state-vars
    set wood-per-patch []
    set year-travel travel-dist-per-year ;;year-travel is subtracted from, so start with the max distance an agent can go
    set no-place FALSE
-   set extra-year-travel 10 ;;this starts as a positive value for implementation in code below, but agents who are purely time minimizing will zero this out before acting upon it
+   set extra-year-travel 1 ;;this starts as a positive value for implementation in code below, but agents who are purely time minimizing will zero this out before acting upon it
    set extra-energy-obtained 0
   ]
 
@@ -541,7 +543,13 @@ to find-best-location
     go-home
   ]
   [
-  set poss-trees trees in-radius (year-travel / 2) ;list of possible trees an agent can get to, divide by 2 to account for the fact they need to go out and back
+    ifelse energy-obtained < yearly-need
+    [  ;if the agent hasn't yet met their energy need
+      set poss-trees trees in-radius (year-travel / 2) ;list of possible trees an agent can get to, divide by 2 to account for the fact they need to go out and back
+    ]
+    [ ;if the agent is pursuing at least some energy maximization
+      set poss-trees trees in-radius (extra-year-travel / 2)
+    ]
   calc-temp-RR
   let best-tree max-one-of poss-trees [temp-RR] ;;identify the patch that gives the best return rate (which is a function of the kilojoules acquired from the available biomass and distance from home)
   let start-patch patch-here ;remember temporarily the patch the agent begins on (for the first time they move in a turn, this will be the home-base patch)
@@ -596,7 +604,7 @@ ifelse finished = TRUE
     ;harvested wood that is not post-processed (the empty space that is not able to be used)
     let energy-still-need (yearly-need - energy-obtained) ;;calculate how much energy agent still needs for the year as total needed minus total taken this year
     ask target-tree [ ;have the agent ask the tree they are currently targeting (and intend to harvest from)
-    ifelse precision (cwood + (cwood * extra-vol-multiplier)) 6 >= (max-truckload + (max-truckload * proportion_harvest_remain)) ;if the patch has equal to or more firewood than the agent's truck can haul
+    ifelse (cwood + (cwood * extra-vol-multiplier)) >= (max-truckload + (max-truckload * proportion_harvest_remain)) ;if the patch has equal to or more firewood than the agent's truck can haul
         ;plus the extra percent that is leftover as a result of harvest leaving smaller pieces behind and with unused space in the truck factored in
       [set max-load-energy (max-truckload * mj-energy-multiplier)] ;;calculate max-load-energy the agent can get as the kilojoules for the truckload of this wood type
       ;if the patch las less wood than the agent's truck can haul
@@ -608,7 +616,7 @@ ifelse finished = TRUE
   [;start if
     ifelse Time_vs_Energy_max = 0 ;;if agents are time minimizing,
         [; just be done
-          let wood-need precision (energy-still-need / [mj-energy-multiplier] of target-tree) 6;calculate the kg wood yet needed to meet the yearly energy requirement
+          let wood-need (energy-still-need / [mj-energy-multiplier] of target-tree);calculate the kg wood yet needed to meet the yearly energy requirement
           set truckload-space-taken (truckload-space-taken + (wood-need + (wood-need * [extra-vol-multiplier] of target-tree)));add this wood to any already in the truck (or to an empty truck)
            ;accounting for the empty space
           set wood-per-patch lput wood-need wood-per-patch
@@ -626,7 +634,7 @@ ifelse finished = TRUE
         [;else, continue foraging until they are out of time
 
           ;first, record the agent will take enough to meet energy need
-          let wood-need precision (energy-still-need / [mj-energy-multiplier] of target-tree) 6;calculate the kg wood yet needed to meet the yearly energy requirement
+          let wood-need (energy-still-need / [mj-energy-multiplier] of target-tree);calculate the kg wood yet needed to meet the yearly energy requirement
           set truckload-space-taken (truckload-space-taken + (wood-need + (wood-need * [extra-vol-multiplier] of target-tree)));add this wood to any already in the truck (or to an empty truck)
            ;accounting for the empty space
           set wood-per-patch lput wood-need wood-per-patch
@@ -639,7 +647,9 @@ ifelse finished = TRUE
               ;color-patch ;run the color patch code which will only color this patch
           ]
           ;then begin the process of taking extra (including from current patch)
-          set extra-year-travel ((travel-dist-per-year - year-travel) * Time_vs_Energy_max) ;;calcualte how much extra time (distance) the agent will use as the percent of remaining foraging time
+          set extra-year-travel (((year-travel - distance patch 0 0) * Time_vs_Energy_max) + distance patch 0 0) ;;calcualte how much extra time (distance) the agent will use as the percent of remaining foraging time
+          ;; this is total possible travel minus travel completed minus distance to home times how much % of that time agent will use with dist to home added back in since that dist isn't extra time
+          ;but time already budgeted for and usable
           continue-foraging
         ]
 
@@ -696,23 +706,23 @@ end
 to find-next-best-location
   ;this is an agent sub-model for locating the best RR patch from the current location if they have already harvested, haven't filled the truck, and need
   ;;more firewood
-  ifelse year-travel <= 0 OR extra-year-travel <= 0
-    [
-      set finished TRUE
-      if energy-obtained < yearly-need ;if the agent is ending their foraging without meeting their need
-        [set no-place TRUE]
-      go-home
-    ]
-    [
+
   let start-patch patch-here ;have the patch the agent is currently on become the patch for which distance is used for RR
 
   ask trees-here [set home-base? TRUE] ;;temporarily make the current patch home for purpose of recalculating new RR raster
   ask trees with [temp-RR > 0] [set temp-RR 0];have all patches reset their RR to 0 so there are no errors with this agent
-  ask poss-trees [set travel-cost-here-home (distance start-patch + dist-from-home-base)]
-  let option-trees poss-trees with [[travel-cost-here-home] of self <= [year-travel] of myself ];grab a subset of patches the agent can get to (within max dist of home)
+  ifelse energy-obtained < yearly-need
+    [
+      ask poss-trees [set travel-cost-here-home (distance start-patch + dist-from-home-base)]
+      set t-option-trees poss-trees with [[travel-cost-here-home] of self <= [year-travel] of myself ]
+    ];grab a subset of patches the agent can get to (within max dist of home)
   ;and that are reachable with the total travel done so far. These are all hte patches the agent can get to and still have enough travel to get home.
+    [
+      ask poss-trees [set travel-cost-here-home (distance start-patch + dist-from-home-base)]
+      set t-option-trees poss-trees with [[travel-cost-here-home] of self <= [extra-year-travel] of myself]
+    ]
 
-  ask option-trees [; ask patches that are within a radius wherein the agent has enough
+  ask t-option-trees [; ask patches that are within a radius wherein the agent has enough
     ;travel left to get to the patch and still get back home (total distance can travel per bout minus how far they have travelled in the bout so far minus
     ;the distance still to get back home
     ifelse home-base? = TRUE
@@ -740,7 +750,7 @@ to find-next-best-location
       ]
 
   ]
-  ]
+
 
 
 end
@@ -761,7 +771,8 @@ to go-home
   set truckload-taken lput truckload-space-taken truckload-taken ;add to the list of how much wood was in the truck when you went home
   set truckload-space-taken 0 ;;empty the truck
   set trips-home-counter (trips-home-counter + 1);;record how many times during a year a forager goes out foraging and returns home
-  if year-travel <= 0 or extra-year-travel <= 0 [set finished TRUE] ;;if the forager has no more travel time available, end their turn
+  if year-travel <= 0 [set finished TRUE] ;;if the forager has no more travel time available, end their turn
+  if extra-year-travel <= 0 [set finished TRUE] ;;if the forager has no more travel time available, end their turn
   ;set bout-travel travel-dist-per-bout;reset the distance traveled on the foraging bout since agent may begin a new bout
   if finished = TRUE  ;if they have met their quota
     [set lifetime-travel lput dist-travel-year lifetime-travel ;record lifetime travel by adding this year's distance travelled to a lifetime list
@@ -783,11 +794,11 @@ to continue-foraging
 
     let target-tree max-one-of trees-here [avail-megajoules]
     ;calculate how much space you have in the truck and how much energy you still need to get
-    let max-truckload precision ((max-truckload-empty - truckload-space-taken) - ((max-truckload-empty - truckload-space-taken) * [extra-vol-multiplier] of target-tree)) 6
+    let max-truckload ((max-truckload-empty - truckload-space-taken) - ((max-truckload-empty - truckload-space-taken) * [extra-vol-multiplier] of target-tree))
     ;the max wood an agent can load in the truck is the max amount their empty truck can haul minus any wood they have in the truck already and minus the extra space that will be taken up by
     ;harvested wood that is not post-processed (the empty space that is not able to be used)
     ask target-tree [ ;have the agent ask the tree they are currently targeting (and intend to harvest from)
-    ifelse precision (cwood + (cwood * extra-vol-multiplier)) 6 >= (max-truckload + (max-truckload * proportion_harvest_remain)) ;if the patch has equal to or more firewood than the agent's truck can haul
+    ifelse (cwood + (cwood * extra-vol-multiplier)) >= (max-truckload + (max-truckload * proportion_harvest_remain)) ;if the patch has equal to or more firewood than the agent's truck can haul
         ;plus the extra percent that is leftover as a result of harvest leaving smaller pieces behind and with unused space in the truck factored in
       [set max-load-energy (max-truckload * mj-energy-multiplier)] ;;calculate max-load-energy the agent can get as the kilojoules for the truckload of this wood type
       ;if the patch las less wood than the agent's truck can haul
@@ -797,7 +808,7 @@ to continue-foraging
 
       ifelse extra-year-travel > 0 ;if there is still time left being committed to harvesting more firewood
       [
-        ifelse precision ([cwood] of target-tree + ([cwood] of target-tree * [extra-vol-multiplier] of target-tree)) 6 >= (max-truckload + (max-truckload * proportion_harvest_remain))
+        ifelse ([cwood] of target-tree + ([cwood] of target-tree * [extra-vol-multiplier] of target-tree)) >= (max-truckload + (max-truckload * proportion_harvest_remain))
       [;if the patch has equal to or more wood than the truck can carry, with the excess wood remaining after harvest factored in, fill the truck
         set truckload-space-taken (truckload-space-taken + max-truckload);fill the truck with wood it can take
         set space-taken max-truckload;;record how much space was taken up (wood + extra space)
@@ -828,7 +839,7 @@ to continue-foraging
       ;color-patch ;run the color patch code which will only color this patch
     ]
 
-    ifelse max-truckload - space-taken <= 0 OR (extra-year-travel - (distance patch 0 0)) <= 0
+    ifelse max-truckload - space-taken <= 0
       [;; if the agent filled the truck, even though didn't fill the yearly-need, go home to empty the truck
         ;; or if the agent is out of moves (i.e., dist home is equal to amount of travel time left) go home
         go-home ;go home and empty truck
@@ -1426,7 +1437,7 @@ n-time-steps
 n-time-steps
 10
 1000
-200.0
+150.0
 10
 1
 NIL
@@ -1541,13 +1552,13 @@ PENS
 "Mean" 1.0 0 -16777216 true "" "if ticks > 49 [plot mean [dist-travel-year] of foragers]"
 "Max" 1.0 0 -10141563 true "" "if ticks > 49 [plot max [dist-travel-year] of foragers]"
 "Min" 1.0 0 -8990512 true "" "if ticks > 49 [plot min [dist-travel-year] of foragers]"
-"pen-3" 1.0 0 -7500403 true "" "plot 500"
+"pen-3" 1.0 0 -7500403 true "" "if ticks > 49 [plot Max-travel]"
 
 PLOT
 1250
-160
-1450
 310
+1450
+460
 Foraging Trips per Turn (Histogram)
 No. Trips
 Frequency
@@ -1635,9 +1646,9 @@ PENS
 
 PLOT
 1250
-310
-1450
 460
+1450
+610
 Proportion all Foragers not meeting energy need
 Tick
 Proportion
@@ -1673,9 +1684,9 @@ SLIDER
 778
 Max-travel
 Max-travel
-100
-500
-200.0
+25
+1000
+300.0
 25
 1
 NIL
@@ -1690,7 +1701,7 @@ Time_vs_Energy_max
 Time_vs_Energy_max
 0
 1
-0.2
+1.0
 0.1
 1
 NIL
@@ -1698,9 +1709,9 @@ HORIZONTAL
 
 PLOT
 1250
-460
+160
 1450
-580
+310
 Mean extra energy (mj) obtained
 NIL
 NIL
@@ -1713,6 +1724,8 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "if ticks > 49 [plot mean [extra-energy-obtained] of foragers]"
+"pen-1" 1.0 0 -10141563 true "" "if ticks > 49 [plot max [extra-energy-obtained] of foragers]"
+"pen-2" 1.0 0 -8990512 true "" "if ticks > 49 [plot min [extra-energy-obtained] of foragers]"
 
 @#$#@#$#@
 ## WHAT IS IT?
