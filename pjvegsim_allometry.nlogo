@@ -153,6 +153,8 @@ foragers-own [
   extra-energy-obtained;; the additional energy a forager has obtained from engaging in some percentage of energy maximizing
   total-extra-energy-obtained
   t-option-trees
+  lifetime-pinyon
+  lifetime-juniper
 ]
 
 patches-own [
@@ -489,6 +491,8 @@ to make-foragers
       set no-place FALSE
       set total-extra-energy-obtained [] ;;make an empty list
       set extra-energy-obtained 0
+      set lifetime-pinyon 0
+      set lifetime-juniper 0
     ]
   ]
 
@@ -622,6 +626,9 @@ ifelse finished = TRUE
           set wood-per-patch lput wood-need wood-per-patch
           set wood-taken (wood-taken + wood-need) ;record how much wood has been taken this year
           set energy-obtained (energy-obtained + energy-still-need) ;;record how much energy the agent has obtained for the year
+          ifelse [species] of target-tree = "juniper"
+          [set lifetime-juniper lifetime-juniper + wood-need]
+          [set lifetime-pinyon lifetime-pinyon + wood-need]
           ask target-tree [ ;have the patch remove the taken biomass and recalculate its RR
               set cwood (cwood - wood-need) ;;patch sets its new biomass as the biomass it began with minus the amount taken by the forager
               calc-new-energy
@@ -640,6 +647,9 @@ ifelse finished = TRUE
           set wood-per-patch lput wood-need wood-per-patch
           set wood-taken (wood-taken + wood-need) ;record how much wood has been taken this year
           set energy-obtained (energy-obtained + energy-still-need) ;;record how much energy the agent has obtained for the year
+          ifelse [species] of target-tree = "juniper"
+            [set lifetime-juniper lifetime-juniper + wood-need]
+            [set lifetime-pinyon lifetime-pinyon + wood-need]
           ask target-tree [ ;have the patch remove the taken biomass and recalculate its RR
               set cwood (cwood - wood-need) ;;patch sets its new biomass as the biomass it began with minus the amount taken by the forager
               calc-new-energy
@@ -656,7 +666,7 @@ ifelse finished = TRUE
   ]; end if
 
   [; start else if the yearly energy still needed is greater than the max energy they can get from the max load can take from the patch (i.e., agent cannot fill their quota)
-      ifelse precision ([cwood] of target-tree + ([cwood] of target-tree * [extra-vol-multiplier] of target-tree)) 6 >= (max-truckload + (max-truckload * proportion_harvest_remain))
+      ifelse ([cwood] of target-tree + ([cwood] of target-tree * [extra-vol-multiplier] of target-tree)) >= (max-truckload + (max-truckload * proportion_harvest_remain))
       [;if the patch has equal to or more wood than the truck can carry, with the excess wood remaining after harvest factored in, fill the truck
         set truckload-space-taken (truckload-space-taken + max-truckload);fill the truck with wood it can take
         set space-taken max-truckload;;record how much space was taken up (wood + extra space)
@@ -664,15 +674,21 @@ ifelse finished = TRUE
         set wood-per-patch lput wood-taken-patch wood-per-patch
         set wood-taken (wood-taken + max-truckload) ;record how much wood has been taken for the year
         set energy-obtained (energy-obtained + [max-load-energy] of target-tree);;record how much energy (kilojoules) agent has obtained
+        ifelse [species] of target-tree = "juniper"
+          [set lifetime-juniper lifetime-juniper + wood-taken-patch]
+          [set lifetime-pinyon lifetime-pinyon + wood-taken-patch]
       ]
       [;if the patch has less wood than a truck can carry,
-        set truckload-space-taken precision (truckload-space-taken + ([cwood] of target-tree + ([cwood] of target-tree * [extra-vol-multiplier] of target-tree) - ([cwood] of target-tree * proportion_harvest_remain))) 6;;take everything there
+        set truckload-space-taken (truckload-space-taken + ([cwood] of target-tree + ([cwood] of target-tree * [extra-vol-multiplier] of target-tree) - ([cwood] of target-tree * proportion_harvest_remain)));;take everything there
         ;(i.e., all harvestable wood from the patch) except the amount that won't be fully harvested and put it in the truck (truck not full)
-        set space-taken precision ([cwood] of target-tree + ([cwood] of target-tree * [extra-vol-multiplier] of target-tree) - ([cwood] of target-tree * proportion_harvest_remain)) 6;
-        set wood-taken-patch precision ([cwood] of target-tree - ([cwood] of target-tree * proportion_harvest_remain)) 6;record how much wood was taken from this patch (all but the proportion not harvested)
+        set space-taken ([cwood] of target-tree + ([cwood] of target-tree * [extra-vol-multiplier] of target-tree) - ([cwood] of target-tree * proportion_harvest_remain));
+        set wood-taken-patch ([cwood] of target-tree - ([cwood] of target-tree * proportion_harvest_remain));record how much wood was taken from this patch (all but the proportion not harvested)
         set wood-per-patch lput wood-taken-patch wood-per-patch
         set wood-taken (wood-taken + wood-taken-patch);add to the amount of wood taken for the year
         set energy-obtained (energy-obtained + [max-load-energy] of target-tree * proportion_harvest_remain);;record how much energy (kilojoules) agent has obtained
+        ifelse [species] of target-tree = "juniper"
+          [set lifetime-juniper lifetime-juniper + wood-taken-patch]
+          [set lifetime-pinyon lifetime-pinyon + wood-taken-patch]
       ]
 
       let cwood-loss wood-taken-patch ;remember how much wood was removed from this patch for patch-use below
@@ -816,6 +832,9 @@ to continue-foraging
         set wood-per-patch lput wood-taken-patch wood-per-patch
         set wood-taken (wood-taken + max-truckload) ;record how much wood has been taken for the year
         set extra-energy-obtained (extra-energy-obtained + [max-load-energy] of target-tree);;record how much energy (kilojoules) agent has obtained
+        ifelse [species] of target-tree = "juniper"
+          [set lifetime-juniper lifetime-juniper + wood-taken-patch]
+          [set lifetime-pinyon lifetime-pinyon + wood-taken-patch]
       ]
       [;if the patch has less wood than a truck can carry,
         set truckload-space-taken precision (truckload-space-taken + ([cwood] of target-tree + ([cwood] of target-tree * [extra-vol-multiplier] of target-tree) - ([cwood] of target-tree * proportion_harvest_remain))) 6;;take everything there
@@ -825,6 +844,9 @@ to continue-foraging
         set wood-per-patch lput wood-taken-patch wood-per-patch
         set wood-taken (wood-taken + wood-taken-patch);add to the amount of wood taken for the year
         set extra-energy-obtained (extra-energy-obtained + [max-load-energy] of target-tree * proportion_harvest_remain);;record how much energy (kilojoules) agent has obtained
+        ifelse [species] of target-tree = "juniper"
+          [set lifetime-juniper lifetime-juniper + wood-taken-patch]
+          [set lifetime-pinyon lifetime-pinyon + wood-taken-patch]
       ]
 
       let cwood-loss wood-taken-patch ;remember how much wood was removed from this patch for patch-use below
@@ -1183,9 +1205,9 @@ NIL
 1
 
 PLOT
-1050
+940
 460
-1250
+1140
 580
 Soil WC
 NIL
@@ -1534,9 +1556,9 @@ Live_wood_energy
 HORIZONTAL
 
 PLOT
-1250
-10
 1450
+10
+1760
 160
 Dist. Travelled per Year
 Tick
@@ -1546,13 +1568,13 @@ Dist. travelled
 0.0
 100.0
 true
-false
+true
 "" ""
 PENS
 "Mean" 1.0 0 -16777216 true "" "if ticks > 49 [plot mean [dist-travel-year] of foragers]"
 "Max" 1.0 0 -10141563 true "" "if ticks > 49 [plot max [dist-travel-year] of foragers]"
 "Min" 1.0 0 -8990512 true "" "if ticks > 49 [plot min [dist-travel-year] of foragers]"
-"pen-3" 1.0 0 -7500403 true "" "if ticks > 49 [plot Max-travel]"
+"Max-travel" 1.0 0 -7500403 true "" "if ticks > 49 [plot Max-travel]"
 
 PLOT
 1250
@@ -1646,9 +1668,9 @@ PENS
 
 PLOT
 1250
-460
+10
 1450
-610
+160
 Proportion all Foragers not meeting energy need
 Tick
 Proportion
@@ -1686,7 +1708,7 @@ Max-travel
 Max-travel
 25
 1000
-300.0
+500.0
 25
 1
 NIL
@@ -1712,7 +1734,7 @@ PLOT
 160
 1450
 310
-Mean extra energy (mj) obtained
+Extra energy (mj) obtained
 NIL
 NIL
 0.0
@@ -1720,12 +1742,31 @@ NIL
 0.0
 10.0
 true
-false
+true
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "if ticks > 49 [plot mean [extra-energy-obtained] of foragers]"
-"pen-1" 1.0 0 -10141563 true "" "if ticks > 49 [plot max [extra-energy-obtained] of foragers]"
-"pen-2" 1.0 0 -8990512 true "" "if ticks > 49 [plot min [extra-energy-obtained] of foragers]"
+"Mean" 1.0 0 -16777216 true "" "if ticks > 49 [plot mean [extra-energy-obtained] of foragers]"
+"Max" 1.0 0 -10141563 true "" "if ticks > 49 [plot max [extra-energy-obtained] of foragers]"
+"Min" 1.0 0 -8990512 true "" "if ticks > 49 [plot min [extra-energy-obtained] of foragers]"
+
+PLOT
+1450
+160
+1650
+310
+Wood Harvested by Species
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Pinyon" 1.0 0 -8330359 true "" "if ticks > 49 [plot sum [lifetime-pinyon] of foragers]"
+"Juniper" 1.0 0 -14333415 true "" "if ticks > 49 [plot sum [lifetime-juniper] of foragers]"
 
 @#$#@#$#@
 ## WHAT IS IT?
