@@ -279,6 +279,7 @@ to go
   if ticks > 49 [ ;; allow forest growth and death to happen before foragers begin operating
   reset-state-vars
   forage
+  report-forager-vars
   ]
 
   tick
@@ -309,6 +310,9 @@ to grow
   calc-hgt
   calc-carea
   calc-cwood-carea
+
+  if species = "pine" [set avail-megajoules ((cwood * mj-energy-multiplier) * Live_wood_energy)] ;; calculate the energy available, slight penalty for having to take down a standing dead tree
+  if species = "juniper" [set avail-megajoules ((cwood * mj-energy-multiplier) * Live_wood_energy)];; calculate the energy available, slight penalty for having to take down a standing dead tree
 
 end
 
@@ -341,6 +345,8 @@ to death
     set max-live-cwood cwood
     set color gray
     set dead-trees dead-trees + 1
+    if species = "pine" [set avail-megajoules ((cwood * mj-energy-multiplier) * Standing_dead_energy)] ;; calculate the energy available, slight penalty for having to take down a standing dead tree
+    if species = "juniper" [set avail-megajoules ((cwood * mj-energy-multiplier) * Standing_dead_energy)];; calculate the energy available, slight penalty for having to take down a standing dead tree
     ;; Uncomment these two lines to simulate immediate harvesting
     ;ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
     ;die
@@ -1151,6 +1157,14 @@ to-report mean-suitability-juniper
   ]
 end
 
+to report-forager-vars
+  ;this is an agent sub-model for forager agents to record annual harvest and travel data
+  file-open "forager_dat.csv" ;open the csv file
+  file-print csv:to-string [(list who ticks yearly-need energy-obtained wood-taken dist-travel-year trips-home-counter no-place extra-energy-obtained lifetime-pinyon lifetime-juniper Max-travel Time_vs_Energy_max Live_wood_energy Standing_dead_energy Excess_volume_taken_pinyon Excess_volume_taken_juniper Max_truck_capacity proportion_harvest_remain) ] of foragers ;put the data into the csv as one row with multiple columns per forager agent
+  file-close ;close the csv file
+
+end
+
 to profile
   setup                                          ;; set up the model
   profiler:start                                 ;; start profiling
@@ -1534,7 +1548,7 @@ proportion_harvest_remain
 proportion_harvest_remain
 0
 0.3
-0.05
+0.1
 0.01
 1
 NIL
@@ -1549,7 +1563,7 @@ Live_wood_energy
 Live_wood_energy
 0
 1
-1.0E-4
+0.0
 0.0001
 1
 % of ideal max
@@ -1691,7 +1705,7 @@ SLIDER
 698
 Standing_dead_energy
 Standing_dead_energy
-0.75
+0
 1
 0.875
 0.025
@@ -1708,7 +1722,7 @@ Max-travel
 Max-travel
 25
 1000
-500.0
+700.0
 25
 1
 NIL
@@ -1723,7 +1737,7 @@ Time_vs_Energy_max
 Time_vs_Energy_max
 0
 1
-1.0
+0.0
 0.1
 1
 NIL
