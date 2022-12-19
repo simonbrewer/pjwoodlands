@@ -486,7 +486,7 @@ to make-foragers
      [set shape "person" ;make agents person shape
       set finished FALSE ;upon creation, no forager has already acquired their annual energy need
       set max-truckload-empty Max_truck_capacity * 100 ;;cords * 100 to estimate kgs of wood a completely empty truck can haul (NEEDs TO BE PUT INTO APPROPRIATE UNIT VALUES)
-      set yearly-need round (1000 + random-float 500) ;;set yearly energy need in megajoules - NEEDS TO BE EDITED FOR PROPER UNIT VALUES
+      set yearly-need round (base_need + random-float need_variance) ;;set yearly energy need in megajoules - NEEDS TO BE EDITED FOR PROPER UNIT VALUES
       set wood-taken-lifetime 0 ;;start the agent having taken no wood
       set energy-obtained 0;;start having obtained no energy
       set dist-travel-year 0 ;;start with having no distance travelled
@@ -822,93 +822,6 @@ to find-next-best-location
         set dist-travel-year (dist-travel-year + distance start-patch)
       ]
   ]
-
-;  TRY THE CODE REUSING POSS-TREES TO GET RID OF AN EXTRA VARIABLE (T-OPTION-TREES)
-;    let start-patch patch-here ;have the patch the agent is currently on become the patch for which distance is used for RR
-;  ask trees-here [set home-base? TRUE] ;;temporarily make the current patch home for purpose of recalculating new RR raster
-;  ask trees in-radius stand-size [
-;    calc-temp-RR ;have trees in the available stand area calculate foraging return rate
-;    set travel-cost-here-home (distance start-patch + dist-from-home-base) ;also get the total maximum travel cost
-;    ]
-;
-;  ifelse energy-obtained < yearly-need ;;identify viable trees as those within the current stand and that the agent can get to while still being able to get home
-;    [;if agent is still working to meet the yearly need
-;      set poss-trees trees in-radius stand-size with [[travel-cost-here-home] of self <= [year-travel] of myself]
-;    ]
-;    [;else if energy maximizing is happening
-;      set poss-trees trees in-radius stand-size with [[travel-cost-here-home] of self <= [extra-year-travel] of myself]
-;    ]
-;
-;  ask poss-trees [;ask trees within the foraging radius
-;      ifelse home-base? = TRUE
-;      [set temp-RR 0] ;;if the patch is the one the agent is currently on (i.e., already harvested from), give it a temp-RR of 0
-;      [set temp-RR (avail-megajoules / distance start-patch)] ;else, calculate the RR for the agent as the energy divided by distance to patch where agent is at
-;    ]
-;
-;  ask trees-here [set home-base? FALSE];;have current patch go back to not being a home patch
-;  let best-tree max-one-of poss-trees [temp-RR]
-;  ifelse best-tree = nobody or [temp-RR] of best-tree <= 0
-;    [;if there are no patches that can be targeted (i.e., no patches with energy are in reach, go home - this could happen due to depletion or distance already traveled)
-;      go-home;go home to unload anything you have
-;      find-best-stand ;try to see if there is another stand you can reach with energy
-;      find-best-tree ;if there is a stand with energy, find the best tree in that stand
-;    ]
-;    ;else, if there is a tree you can reach with energy
-;    [move-to best-tree;;move to the best tree
-;      ifelse energy-obtained < yearly-need
-;      [  ;if the yearly need in energy is not yet met
-;        set year-travel (year-travel - distance start-patch) ;;record the distance the agent has gone to the new patch
-;        set dist-travel-year (dist-travel-year + distance start-patch) ;add this move distance (from current patch to new foraging patch) to the distance travelled for the year
-;      ]
-;      [ ;if the yearly need is met (i.e., agents are getting more firewood than min necessary
-;        set extra-year-travel (extra-year-travel - distance start-patch)
-;        set dist-travel-year (dist-travel-year + distance start-patch)
-;      ]
-;  ]
-
-;
-; ; ask trees with [temp-RR > 0] [set temp-RR 0];have all patches reset their RR to 0 so there are no errors with this agent
-;  ifelse energy-obtained < yearly-need
-;    [
-;      ask poss-trees [set travel-cost-here-home (distance start-patch + dist-from-home-base)]
-;      set t-option-trees poss-trees with [[travel-cost-here-home] of self <= [year-travel] of myself ]
-;    ];grab a subset of patches the agent can get to (within max dist of home)
-;  ;and that are reachable with the total travel done so far. These are all hte patches the agent can get to and still have enough travel to get home.
-;    [
-;      ask poss-trees [set travel-cost-here-home (distance start-patch + dist-from-home-base)]
-;      set t-option-trees poss-trees with [[travel-cost-here-home] of self <= [extra-year-travel] of myself]
-;    ]
-;
-;  ask t-option-trees [; ask patches that are within a radius wherein the agent has enough
-;    ;travel left to get to the patch and still get back home (total distance can travel per bout minus how far they have travelled in the bout so far minus
-;    ;the distance still to get back home
-;    ifelse home-base? = TRUE
-;    [set temp-RR 0]
-;    [set temp-RR (avail-megajoules / distance start-patch)];else, calculate the RR for the agent as the energy divided by distance to patch where agent is at
-;  ]
-;
-;  ask trees-here [set home-base? FALSE];;have current patch go back to not being a home patch
-;
-;  let best-tree max-one-of trees [temp-RR] ;;identify the patch that gives the best return rate (which is a function of the kilojoules acquired from the available biomass and distance from current location)
-;  ifelse best-tree = nobody or [temp-RR] of best-tree <= 0
-;  [;if there are no patches that can be targeted (i.e., no patches with energy are in reach, go home - this could happen due to depletion or distance already traveled)
-;    go-home;go home to unload anything you have
-;    find-best-stand
-;    find-best-tree ;try to see if there is anything else in the foraging radius you can reach
-;  ]
-;  [move-to best-tree;;else, move to the best patch
-;      ifelse energy-obtained < yearly-need
-;      [  ;if the yearly need in energy is not yet met
-;        set year-travel (year-travel - distance start-patch) ;;record the distance the agent has gone to the new patch
-;        set dist-travel-year (dist-travel-year + distance start-patch) ;add this move distance (from current patch to new foraging patch) to the distance travelled for the year
-;      ]
-;      [ ;if the yearly need is met (i.e., agents are getting more firewood than min necessary
-;        set extra-year-travel (extra-year-travel - distance start-patch)
-;        set dist-travel-year (dist-travel-year + distance start-patch)
-;      ]
-;  ]
-
-
 
 end
 
@@ -1675,7 +1588,7 @@ num_foragers
 num_foragers
 0
 30
-3.0
+5.0
 1
 1
 NIL
@@ -1697,10 +1610,10 @@ cords (wood)
 HORIZONTAL
 
 SLIDER
-195
-585
-392
-618
+645
+655
+842
+688
 proportion_harvest_remain
 proportion_harvest_remain
 0
@@ -1952,6 +1865,36 @@ stand-size
 1
 1
 grid-cell radius
+HORIZONTAL
+
+SLIDER
+195
+585
+367
+618
+base_need
+base_need
+500
+1500
+750.0
+250
+1
+NIL
+HORIZONTAL
+
+SLIDER
+375
+585
+547
+618
+need_variance
+need_variance
+0
+1000
+500.0
+100
+1
+NIL
 HORIZONTAL
 
 @#$#@#$#@
