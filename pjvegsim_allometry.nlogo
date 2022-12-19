@@ -1610,10 +1610,10 @@ cords (wood)
 HORIZONTAL
 
 SLIDER
-645
-655
-842
-688
+555
+585
+752
+618
 proportion_harvest_remain
 proportion_harvest_remain
 0
