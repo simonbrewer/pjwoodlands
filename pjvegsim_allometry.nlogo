@@ -486,7 +486,7 @@ to make-foragers
      [set shape "person" ;make agents person shape
       set finished FALSE ;upon creation, no forager has already acquired their annual energy need
       set max-truckload-empty Max_truck_capacity * 100 ;;cords * 100 to estimate kgs of wood a completely empty truck can haul (NEEDs TO BE PUT INTO APPROPRIATE UNIT VALUES)
-      set yearly-need round ((min_yearly_need * (1 + need_multiplier)) + random-float need_variance) ;;set yearly energy need in megajoules - NEEDS TO BE EDITED FOR PROPER UNIT VALUES
+      set yearly-need round ((min_yearly_need * (1 + need_multiplier)) + random-normal 0 need_variance) ;;set yearly energy need in megajoules - NEEDS TO BE EDITED FOR PROPER UNIT VALUES
       set wood-taken-lifetime 0 ;;start the agent having taken no wood
       set energy-obtained 0;;start having obtained no energy
       set dist-travel-year 0 ;;start with having no distance travelled
@@ -1890,9 +1890,9 @@ SLIDER
 need_variance
 need_variance
 0
-1000
-500.0
-100
+300
+150.0
+50
 1
 NIL
 HORIZONTAL
