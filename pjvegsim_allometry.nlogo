@@ -358,8 +358,6 @@ to death
     ;ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
     ;die
   ]
-
-
 end
 
 to disturbance
@@ -983,6 +981,15 @@ to set-params
   set diam-lrc-wc [ -0.215 -0.593 ]
   ;; Parameter correlations (asym vs. lrc)
   set diam-corr [ -0.886 -0.866 ]
+
+  set diam-asym-mean [ 0.336 0.303 ]
+  set diam-asym-sd [ 0.303 0.097 ]
+  set diam-asym-wc [ 0.0067 -0.0488 ]
+  set diam-lrc-mean [ -3.645 -0.897 ]
+  set diam-lrc-sd [ 1.52 0.72 ]
+  set diam-lrc-wc [ -0.0383 1.718 ]
+  ;; Parameter correlations (asym vs. lrc)
+  set diam-corr [ -0.513 -0.777 ]
 
   ;; CROWN AREA ;;
   ;; Parameters derived from NLME equations
