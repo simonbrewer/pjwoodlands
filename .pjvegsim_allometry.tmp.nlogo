@@ -1173,7 +1173,7 @@ to recruitment
     set decay-rate-standing 0.01
     set decay-rate-fallen 0.1
     set pfall 0.25
-    set stems one-of range 2 + 1 ;; 2 is from Chojnacky
+    set stems one-of range 2 + 1 ;; 6 is from Chojnacky
     set mj-energy-multiplier 21
     set avail-megajoules ((cwood * mj-energy-multiplier) * Live_wood_energy) ;; adjust this once we have translated cwood into a volume estimate so we can do kg * 21 (~21 megajoules / kg)
     set extra-vol-multiplier Excess_volume_taken_pinyon ;set the multiplier for how much extra space in the truck unprocessed pinyon takes up
