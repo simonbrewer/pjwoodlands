@@ -77,32 +77,35 @@ globals [
   all-agent-truckload-sum ;;running list of total truckload space used by each agent each turn
   all-trips-home ;;running list of the total number of foraging trips taken per turn per agent
   all-agent-wood-taken ;;running list of total wood taken by each agent each turn
+
+  ;; Growth model
+  growth-model
 ]
 
 trees-own [
   ;; Allometric coefficients
-  hgt
+  hgt ;; Height (m)
   hgt-asym
   hgt-lrc
-  diam
+  diam ;; Diameter (m)
   diam-asym
   diam-lrc
-  carea
+  carea ;; Crown area (m)
   carea-asym
   carea-lrc
 
-  ;; Number of stems
-  stems
+  drc ;; Diameter at root crown
+  stems ;; Number of stems
 
   ;; Cmass values
+  cwood ;; Kg if using Grier model / kg C if using Guess model
   cwood-coef
-  cwood
   max-live-cwood
 
   ;; Other individual characteristics
   age
-  species
-  species-number
+  species ;; Character label
+  species-number ;; Id (0 = Pine; 1 = Juniper)
   reproductive-age
   live?
   standing?
@@ -110,6 +113,7 @@ trees-own [
   decay-rate-standing
   decay-rate-fallen
   pfall ;;  prob of falling once dead
+
   avail-megajoules ;;total energy stored in tree - eventually will be kg of material in tree * megajoule conversion factor (21 for pine 16 for juniper)
   ;;right now this is c-wood * 21 or 16
   extra-vol-multiplier ;the excess space (volume) taken up by the wood without extra processing (i.e., due to cut wood's abnormal shapes, not all of the
@@ -181,6 +185,8 @@ to setup
   ca
   reset-ticks
 
+  ;; hard code growth model for now (choices are 'guess' or 'grier'
+  set growth-model "grier"
 
   ;; List of all fires sizes
   set all-fire-sizes []
@@ -316,10 +322,18 @@ to grow
     ]
   ]
 
-  calc-diam ;; Only need to calculate this at death?
-  calc-hgt
-  calc-carea
-  calc-cwood-carea
+  if growth-model = "grier" [
+    calc-diam ;; Only need to calculate this at death?
+    calc-diam-drc ;; Convert DBH to DRC
+    calc-drc-cwood ;; Convert to cwood (misnomer - this is just wood)
+  ]
+
+  if growth-model = "guess" [
+    calc-diam ;; Only need to calculate this at death?
+    calc-hgt
+    calc-carea
+    calc-cwood-carea
+  ]
 
   if species = "pine" [set avail-megajoules ((cwood * mj-energy-multiplier) * Live_wood_energy)] ;; calculate the energy available, slight penalty for having to take down a standing dead tree
   if species = "juniper" [set avail-megajoules ((cwood * mj-energy-multiplier) * Live_wood_energy)];; calculate the energy available, slight penalty for having to take down a standing dead tree
@@ -1143,13 +1157,48 @@ to calc-cwood-hgt
   set cwood a * carea ^ b
 end
 
-;to calc-cwood
-;  OLD VERSION BASED ON GUESS OUTPUT/NLME
-;  ;; Could merge this into single statement
-;  let ldiam ln diam
-;  let lcwood ldiam * cwood-coef
-;  set cwood exp lcwood
-;end
+to calc-diam-drc
+  ;; Converts DBH to DRC (following Chojnacky et al, West. J. Appl. For. 14, 14–16, table 2)
+  ;; Note that these values are for measurements in cm
+  let B0 -6.818
+  let B1 1.0222
+  let B2 1.8879
+  ;; Adjustment for Pine
+  if species-number = 0 [
+    set B0 B0 + 1.8971
+    set B1 B1 - 0.0399
+  ]
+  ;; Dummy offset for multiple stems
+  let stems-dummy 0
+  if stems = 1 [
+    set stems-dummy 1
+  ]
+  ;; Eqn pg 16 (inverted)
+  ;; dbh = B0 + B1 * drc + B2 * stems-dummy
+  set drc ( ( diam * 100 ) - B0 - B2 * stems-dummy ) / ( B1 * 100 )
+
+end
+
+to calc-drc-cwood
+  ;; Converts DRC to Cwood (wieght in kg)
+  ;; Equation and coefficients from Grier et al (1992; For. Ecol. Managment, 50, 331-350, table 2)
+  let B0 0
+  let B1 1
+
+  if species-number = 0 [ ;; Pine
+    set B0 -2.588
+    set B1 2.955
+  ]
+
+  if species-number = 1 [ ;; Junpier
+    set B0 -2.297
+    set B1 2.431
+  ]
+
+  let lcwood B0 + B1 * log (100 * diam) 10
+  set cwood 10 ^ lcwood
+
+end
 
 to recruitment
 
