@@ -1247,6 +1247,7 @@ to recruitment
   get-hgt-params
   get-carea-params
   get-cwood-params
+  set drc 0
 
 end
 
@@ -1440,9 +1441,9 @@ PENS
 "pen-1" 0.2 1 -2674135 true "" "histogram [cwood-coef] of trees with [species-number = 1]"
 
 PLOT
-1050
+850
 10
-1250
+1050
 160
 CWood (0)
 NIL
@@ -1458,9 +1459,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-1050
+850
 160
-1250
+1050
 310
 CWood (1)
 NIL
@@ -1471,7 +1472,7 @@ NIL
 0.1
 true
 false
-"" "ask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
+"" "ask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood * stems\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -1701,9 +1702,9 @@ Live_wood_energy
 HORIZONTAL
 
 PLOT
-1450
+1250
 10
-1760
+1560
 160
 Dist. Travelled per Year
 Tick
@@ -1740,81 +1741,9 @@ PENS
 "default" 1.0 1 -16777216 true "" "if ticks > 49 [histogram all-trips-home]"
 
 PLOT
-650
-10
-850
-160
-Tree height (0)
-NIL
-NIL
-0.0
-10.0
-0.0
-1.0
-true
-false
-"" "ask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks hgt\n]"
-PENS
-"default" 1.0 0 -16777216 true "" ""
-
-PLOT
-650
-160
-850
-310
-Tree height (1)
-NIL
-NIL
-0.0
-10.0
-0.0
-1.0
-true
-false
-"" "ask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks hgt\n]"
-PENS
-"default" 1.0 0 -16777216 true "" ""
-
-PLOT
-850
-10
 1050
-160
-Tree crown area (0)
-NIL
-NIL
-0.0
-10.0
-0.0
-1.0
-true
-false
-"" "ask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks carea\n]"
-PENS
-"default" 1.0 0 -16777216 true "" ""
-
-PLOT
-850
-160
-1050
-310
-Tree crown area (1)
-NIL
-NIL
-0.0
-10.0
-0.0
-1.0
-true
-false
-"" "ask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks carea\n]"
-PENS
-"default" 1.0 0 -16777216 true "" ""
-
-PLOT
+10
 1250
-10
-1450
 160
 Proportion all Foragers not meeting energy need
 Tick
@@ -1875,9 +1804,9 @@ NIL
 HORIZONTAL
 
 PLOT
-1250
+1050
 160
-1450
+1250
 310
 Extra energy (mj) obtained
 NIL
@@ -1895,9 +1824,9 @@ PENS
 "Min" 1.0 0 -8990512 true "" "if ticks > 49 [plot min [extra-energy-obtained] of foragers]"
 
 PLOT
-1450
+1250
 160
-1650
+1450
 310
 Wood Harvested by Species
 NIL
@@ -1972,6 +1901,61 @@ need_multiplier
 1
 NIL
 HORIZONTAL
+
+PLOT
+650
+10
+850
+160
+Tree DRC (0)
+NIL
+NIL
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" "ask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks drc\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+650
+160
+850
+310
+Tree DRC (1)
+NIL
+NIL
+0.0
+10.0
+0.0
+0.1
+true
+false
+"" "ask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks drc\n]"
+PENS
+"default" 1.0 0 -16777216 true "" ""
+
+PLOT
+1170
+470
+1370
+620
+plot 2
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -6565750 true "" "plot mean [cwood] of trees with [ species-number = 0 ]"
+"pen-1" 1.0 0 -13210332 true "" "plot mean [cwood] of trees with [ species-number = 1 ]"
 
 @#$#@#$#@
 ## WHAT IS IT?
