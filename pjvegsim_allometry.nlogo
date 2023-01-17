@@ -183,7 +183,9 @@ patches-own [
 
 to setup
   ca
+  reset-timer
   reset-ticks
+  profiler:reset
 
   ;; hard code growth model for now (choices are 'guess' or 'grier'
   set growth-model "grier"
@@ -210,7 +212,7 @@ to setup
 
   ;; ask patches [set pcolor scale-color red item 0 max-suitability 0 1 ]
   ;; Create initial trees (50/50 pine or juniper)
-  ask n-of 50 patches [
+  ask n-of (round (0.1 * count patches)) patches [
     sprout-trees 1 [
       ifelse item 0 max-suitability > item 1 max-suitability
       [
@@ -243,12 +245,15 @@ to setup
 end
 
 to go
-
+  profiler:start                                 ;; start profiling
   set dead-trees 0
   set new-trees 0
   set removed-trees 0
 
-  if not any? trees with [live?] [stop]
+  if not any? trees with [live?] [print timer
+    profiler:stop
+    csv:to-file "profiler_data.csv"
+    profiler:data stop]
   if ticks > n-time-steps [
     if fire? [
       ;;ask turtles with [not live?] [die] ;; test for fires with all dead trees removed
@@ -259,6 +264,9 @@ to go
         reset-trees
       ]
     ]
+    print timer
+    profiler:stop
+    csv:to-file "profiler_data.csv" profiler:data
     stop
   ]
 
@@ -286,16 +294,17 @@ to go
     remove-trees
   ]
 
+  if ticks >= forest-generation-period[
   ask patches [
     ;; Update stand (have all stands update to accurate values)
     update-stand
-  ]
+  ]]
 
   ;; Begin forager behavior
-  if ticks > 49 [ ;; allow forest growth and death to happen before foragers begin operating
+  if ticks >= forest-generation-period [ ;; allow forest growth and death to happen before foragers begin operating
   reset-state-vars
   forage
-  report-forager-vars
+  if record_csv [report-forager-vars]
   ]
 
   tick
@@ -367,13 +376,13 @@ to death
     set live? false
     set age-since-death 0
     set max-live-cwood cwood
-    set color gray
     set dead-trees dead-trees + 1
     if species = "pine" [set avail-megajoules ((cwood * mj-energy-multiplier) * Standing_dead_energy)] ;; calculate the energy available, slight penalty for having to take down a standing dead tree
     if species = "juniper" [set avail-megajoules ((cwood * mj-energy-multiplier) * Standing_dead_energy)];; calculate the energy available, slight penalty for having to take down a standing dead tree
     ;; Uncomment these two lines to simulate immediate harvesting
     ;ask patch-here [ set occupied? false ] ;; Patches can be occupied following death of tree
     ;die
+    if show_visuals [set color gray]
   ]
 end
 
@@ -382,7 +391,7 @@ to disturbance
   ;; Can maybe be keyed to remaining biomass or time since death
   if random-float 1 < pfall [
     set standing? false
-    set shape "logs"
+    if show_visuals [set shape "logs"]
   ]
 end
 
@@ -435,11 +444,11 @@ to spark
   set fire-size 0
   ask one-of patches with [occupied?]
   [
-    set pcolor red
+    if show_visuals [set pcolor red]
     set n-fires n-fires + 1
     ask trees-here [
       set burning? true
-      set color orange
+      if show_visuals [set color orange]
       set fire-front turtle-set self
       set fire-size fire-size + 1
     ]
@@ -455,11 +464,11 @@ to spread
       ask ( trees-on neighbors ) with [ not burning? ] [
         if random-float 0.45 < flammability [
           ask patch-here [
-            set pcolor red
+            if show_visuals [set pcolor red]
             set n-fires n-fires + 1
           ]
           set burning? true
-          set color orange
+          if show_visuals [set color orange]
           set new-fire-front (turtle-set new-fire-front self) ;; extend the next round fron
           set fire-size fire-size + 1
         ]
@@ -484,7 +493,7 @@ end
 to reset-trees
   ask trees [
     set burning? false
-    set color green
+    if show_visuals [set color green]
   ]
 end
 
@@ -498,9 +507,10 @@ end
 to make-foragers
   ask patch 0 0 [ ;make all foragers on the home-base patch
     sprout-foragers num_foragers ;create the chosen number of foragers
-     [set shape "person" ;make agents person shape
+    [if show_visuals [set shape "person"] ;make agents person shape
       set finished FALSE ;upon creation, no forager has already acquired their annual energy need
-      set max-truckload-empty Max_truck_capacity * 100 ;;cords * 100 to estimate kgs of wood a completely empty truck can haul (NEEDs TO BE PUT INTO APPROPRIATE UNIT VALUES)
+      set max-truckload-empty Max_truck_capacity * 1360 ;;cords * 1360 to estimate kgs of wood a completely empty truck can haul. (Approx. 3000 lbs per cord dry, which translates
+      ;;to ~1360 kg if we estimate 3000 lbs per cord
       set yearly-need round ((avg_base_need * (1 + need_multiplier)) + random-normal 0 need_variance) ;;set yearly energy need in megajoules - NEEDS TO BE EDITED FOR PROPER UNIT VALUES
       set wood-taken-lifetime 0 ;;start the agent having taken no wood
       set energy-obtained 0;;start having obtained no energy
@@ -961,7 +971,7 @@ to calc-new-energy
     set live? false
     set age-since-death 0
     set max-live-cwood cwood
-    set color gray
+    if show_visuals [set color gray]
     set dead-trees dead-trees + 1
     set standing? false
   ]
@@ -1215,8 +1225,8 @@ to recruitment
   ifelse species-number = 0
   [
     set species "pine"
-    set shape "tree pine"
-    set color 57
+    if show_visuals [set shape "tree pine" set color 57]
+    ;set color 57
     set reproductive-age 20
     if ticks = 0 [ set age random ( reproductive-age - 1 ) ] ;; Only for initialization
     set decay-rate-standing 0.01
@@ -1229,8 +1239,8 @@ to recruitment
   ]
   [
     set species "juniper"
-    set shape "tree"
-    set color 53
+    if show_visuals [set shape "tree" set color 53]
+    ;set color 53
     set reproductive-age 30
     if ticks = 0 [ set age random ( reproductive-age - 1 ) ] ;; Only for initialization
     set decay-rate-standing 0.01
@@ -1309,11 +1319,11 @@ end
 GRAPHICS-WINDOW
 5
 10
-442
-448
+409
+415
 -1
 -1
-13.0
+6.0
 1
 10
 1
@@ -1324,9 +1334,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-32
+65
 0
-32
+65
 1
 1
 1
@@ -1366,7 +1376,7 @@ true
 false
 "set-plot-x-range 0 1\nset-plot-y-range 0 count patches\nset-histogram-num-bars 10" ""
 PENS
-"default" 1.0 1 -16777216 true "" "histogram [wc] of patches"
+"default" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" [histogram [wc] of patches]"
 
 BUTTON
 10
@@ -1399,7 +1409,7 @@ NIL
 0.25
 true
 false
-"" "ask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
+"" "\nif Show_plots = \"show_all_plots\" [\nask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -1417,7 +1427,7 @@ NIL
 0.1
 true
 false
-"" "ask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]"
+"" "if Show_plots = \"show_all_plots\" [\nask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -1437,8 +1447,8 @@ true
 false
 "set-histogram-num-bars 10" ""
 PENS
-"default" 1.0 1 -16777216 true "" "histogram [cwood-coef] of trees with [species-number = 0]"
-"pen-1" 0.2 1 -2674135 true "" "histogram [cwood-coef] of trees with [species-number = 1]"
+"default" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" [histogram [cwood-coef] of trees with [species-number = 0]]"
+"pen-1" 0.2 1 -2674135 true "" "if Show_plots = \"show_all_plots\" [histogram [cwood-coef] of trees with [species-number = 1]]"
 
 PLOT
 850
@@ -1454,7 +1464,7 @@ NIL
 0.5
 true
 false
-"" "ask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]"
+"" "if Show_plots = \"show_all_plots\" [\nask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood\n]\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -1472,7 +1482,7 @@ NIL
 0.1
 true
 false
-"" "ask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood * stems\n]"
+"" "if Show_plots = \"show_all_plots\" [\nask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks cwood * stems\n]\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -1492,7 +1502,7 @@ true
 false
 "" ""
 PENS
-"dead" 1.0 0 -16777216 true "" "plot dead-trees"
+"dead" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" [plot dead-trees]"
 
 PLOT
 650
@@ -1510,7 +1520,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot new-trees"
+"default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" [plot new-trees]"
 
 PLOT
 850
@@ -1528,7 +1538,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot removed-trees"
+"default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" [plot removed-trees]"
 
 PLOT
 450
@@ -1546,8 +1556,8 @@ true
 false
 "" ""
 PENS
-"pine" 1.0 1 -16777216 true "" "histogram [age] of trees with [species-number = 0]"
-"juniper" 1.0 1 -2674135 true "" "histogram [age] of trees with [species-number = 1]"
+"pine" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" [histogram [age] of trees with [species-number = 0]]"
+"juniper" 1.0 1 -2674135 true "" "if Show_plots = \"show_all_plots\" [histogram [age] of trees with [species-number = 1]]"
 
 BUTTON
 85
@@ -1593,8 +1603,8 @@ true
 false
 "" ""
 PENS
-"pine" 1.0 0 -6565750 true "" "plot mean-suitability-pine"
-"juniper" 1.0 0 -13210332 true "" "plot mean-suitability-juniper"
+"pine" 1.0 0 -6565750 true "" "if Show_plots = \"show_all_plots\" [plot mean-suitability-pine]"
+"juniper" 1.0 0 -13210332 true "" "if Show_plots = \"show_all_plots\" [plot mean-suitability-juniper]"
 
 SLIDER
 15
@@ -1665,7 +1675,7 @@ Max_truck_capacity
 Max_truck_capacity
 0.20
 1.5
-0.5
+1.0
 .010
 1
 cords (wood)
@@ -1717,10 +1727,10 @@ true
 true
 "" ""
 PENS
-"Mean" 1.0 0 -16777216 true "" "if ticks > 49 [plot mean [dist-travel-year] of foragers]"
-"Max" 1.0 0 -10141563 true "" "if ticks > 49 [plot max [dist-travel-year] of foragers]"
-"Min" 1.0 0 -8990512 true "" "if ticks > 49 [plot min [dist-travel-year] of foragers]"
-"Max-travel" 1.0 0 -7500403 true "" "if ticks > 49 [plot Max-travel]"
+"Mean" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot mean [dist-travel-year] of foragers]]"
+"Max" 1.0 0 -10141563 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot max [dist-travel-year] of foragers]]"
+"Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot min [dist-travel-year] of foragers]]"
+"Max-travel" 1.0 0 -7500403 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot Max-travel]]"
 
 PLOT
 1250
@@ -1738,7 +1748,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 1 -16777216 true "" "if ticks > 49 [histogram all-trips-home]"
+"default" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [histogram all-trips-home]]"
 
 PLOT
 1050
@@ -1756,7 +1766,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "if ticks > 49 [plot count foragers with [energy-obtained < yearly-need] / num_foragers]"
+"default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [ if ticks > 49 [plot count foragers with [energy-obtained < yearly-need] / num_foragers]]"
 
 SLIDER
 305
@@ -1782,7 +1792,7 @@ Max-travel
 Max-travel
 25
 1000
-400.0
+700.0
 25
 1
 NIL
@@ -1819,9 +1829,9 @@ true
 true
 "" ""
 PENS
-"Mean" 1.0 0 -16777216 true "" "if ticks > 49 [plot mean [extra-energy-obtained] of foragers]"
-"Max" 1.0 0 -10141563 true "" "if ticks > 49 [plot max [extra-energy-obtained] of foragers]"
-"Min" 1.0 0 -8990512 true "" "if ticks > 49 [plot min [extra-energy-obtained] of foragers]"
+"Mean" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot mean [extra-energy-obtained] of foragers]]"
+"Max" 1.0 0 -10141563 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot max [extra-energy-obtained] of foragers]]"
+"Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot min [extra-energy-obtained] of foragers]]"
 
 PLOT
 1250
@@ -1839,8 +1849,8 @@ true
 true
 "" ""
 PENS
-"Pinyon" 1.0 0 -8330359 true "" "if ticks > 49 [plot sum [lifetime-pinyon] of foragers]"
-"Juniper" 1.0 0 -14333415 true "" "if ticks > 49 [plot sum [lifetime-juniper] of foragers]"
+"Pinyon" 1.0 0 -8330359 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot sum [lifetime-pinyon] of foragers]]"
+"Juniper" 1.0 0 -14333415 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot sum [lifetime-juniper] of foragers]]"
 
 SLIDER
 205
@@ -1851,7 +1861,7 @@ stand-size
 stand-size
 1
 5
-3.0
+2.0
 1
 1
 grid-cell radius
@@ -1864,12 +1874,12 @@ SLIDER
 618
 avg_base_need
 avg_base_need
-500
-1500
-1000.0
-250
+15000
+40000
+15000.0
+1000
 1
-NIL
+mj
 HORIZONTAL
 
 SLIDER
@@ -1880,11 +1890,11 @@ SLIDER
 need_variance
 need_variance
 0
-300
+15000
 0.0
-50
+1000
 1
-NIL
+mj
 HORIZONTAL
 
 SLIDER
@@ -1916,7 +1926,7 @@ NIL
 1.0
 true
 false
-"" "ask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks drc\n]"
+"" "if Show_plots = \"show_all_plots\" [\nask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks drc\n]\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -1934,15 +1944,15 @@ NIL
 0.1
 true
 false
-"" "ask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks drc\n]"
+"" "if Show_plots = \"show_all_plots\" [\nask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks drc\n]\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-1170
-470
-1370
-620
+1250
+460
+1450
+610
 plot 2
 NIL
 NIL
@@ -1954,8 +1964,55 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -6565750 true "" "plot mean [cwood] of trees with [ species-number = 0 ]"
-"pen-1" 1.0 0 -13210332 true "" "plot mean [cwood] of trees with [ species-number = 1 ]"
+"default" 1.0 0 -6565750 true "" "if Show_plots = \"show_all_plots\" [plot mean [cwood] of trees with [ species-number = 0 ]]"
+"pen-1" 1.0 0 -13210332 true "" "if Show_plots = \"show_all_plots\" [plot mean [cwood] of trees with [ species-number = 1 ]]"
+
+CHOOSER
+435
+705
+592
+750
+Show_Plots
+Show_Plots
+"show_all_plots" "show_forager_plots" "show_no_plots"
+2
+
+SWITCH
+575
+625
+702
+658
+show_visuals
+show_visuals
+0
+1
+-1000
+
+SWITCH
+710
+625
+827
+658
+record_csv
+record_csv
+1
+1
+-1000
+
+SLIDER
+595
+665
+812
+698
+forest-generation-period
+forest-generation-period
+0
+500
+50.0
+50
+1
+years
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
