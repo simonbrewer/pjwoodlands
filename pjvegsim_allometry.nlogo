@@ -27,13 +27,13 @@ globals [
   hgt-corr
 
   ;; Parameters for deriving allometric equation (diameter)
-  diam-asym-mean
-  diam-lrc-mean
-  diam-asym-sd
-  diam-lrc-sd
-  diam-asym-wc
-  diam-lrc-wc
-  diam-corr
+  dbc-asym-mean
+  dbc-lrc-mean
+  dbc-asym-sd
+  dbc-lrc-sd
+  dbc-asym-wc
+  dbc-lrc-wc
+  dbc-corr
 
   ;; Parameters for deriving allometric equation (crown area)
   carea-asym-mean
@@ -87,9 +87,9 @@ trees-own [
   hgt ;; Height (m)
   hgt-asym
   hgt-lrc
-  diam ;; Diameter (m)
-  diam-asym
-  diam-lrc
+  dbc ;; Diameter (m)
+  dbc-asym
+  dbc-lrc
   carea ;; Crown area (m)
   carea-asym
   carea-lrc
@@ -332,13 +332,13 @@ to grow
   ]
 
   if growth-model = "grier" [
-    calc-diam ;; Only need to calculate this at death?
-    calc-diam-drc ;; Convert DBH to DRC
+    calc-dbc ;; Only need to calculate this at death?
+    calc-dbc-drc ;; Convert DBH to DRC
     calc-drc-cwood ;; Convert to cwood (misnomer - this is just wood)
   ]
 
   if growth-model = "guess" [
-    calc-diam ;; Only need to calculate this at death?
+    calc-dbc ;; Only need to calculate this at death?
     calc-hgt
     calc-carea
     calc-cwood-carea
@@ -1000,23 +1000,23 @@ to set-params
 
   ;; DIAMETER ;;
   ;; Parameters derived from NLME equations
-  set diam-asym-mean [ 0.145 0.031 ]
-  set diam-asym-sd [ 0.078 0.01 ]
-  set diam-asym-wc [ 0.029 0.006 ]
-  set diam-lrc-mean [ -3.57 -1.018 ]
-  set diam-lrc-sd [ 0.976 0.897 ]
-  set diam-lrc-wc [ -0.215 -0.593 ]
+  set dbc-asym-mean [ 0.145 0.031 ]
+  set dbc-asym-sd [ 0.078 0.01 ]
+  set dbc-asym-wc [ 0.029 0.006 ]
+  set dbc-lrc-mean [ -3.57 -1.018 ]
+  set dbc-lrc-sd [ 0.976 0.897 ]
+  set dbc-lrc-wc [ -0.215 -0.593 ]
   ;; Parameter correlations (asym vs. lrc)
-  set diam-corr [ -0.886 -0.866 ]
+  set dbc-corr [ -0.886 -0.866 ]
 
-  set diam-asym-mean [ 0.336 0.303 ]
-  set diam-asym-sd [ 0.303 0.097 ]
-  set diam-asym-wc [ 0.0067 -0.0488 ]
-  set diam-lrc-mean [ -3.645 -0.897 ]
-  set diam-lrc-sd [ 1.52 0.72 ]
-  set diam-lrc-wc [ -0.0383 1.718 ]
+  set dbc-asym-mean [ 0.336 0.303 ]
+  set dbc-asym-sd [ 0.303 0.097 ]
+  set dbc-asym-wc [ 0.0067 -0.0488 ]
+  set dbc-lrc-mean [ -3.645 -0.897 ]
+  set dbc-lrc-sd [ 1.52 0.72 ]
+  set dbc-lrc-wc [ -0.0383 1.718 ]
   ;; Parameter correlations (asym vs. lrc)
-  set diam-corr [ -0.513 -0.777 ]
+  set dbc-corr [ -0.513 -0.777 ]
 
   ;; CROWN AREA ;;
   ;; Parameters derived from NLME equations
@@ -1069,27 +1069,27 @@ to get-hgt-params
   ]
 end
 
-to get-diam-params
+to get-dbc-params
   ;; Uses bivariate random normal equation from
   ;; https://www.probabilitycourse.com/chapter5/5_3_2_bivariate_normal_dist.php
 
-  set diam-asym -9999
-  set diam-lrc 9999
+  set dbc-asym -9999
+  set dbc-lrc 9999
 
-  while [ (diam-asym < 0) or (diam-lrc > 0) ] [ ;; check for reasonable parameter values
+  while [ (dbc-asym < 0) or (dbc-lrc > 0) ] [ ;; check for reasonable parameter values
     ;; 1. Generate z1 and z2
     let z1 random-normal 0 1
     let z2 random-normal 0 1
 
     ;; 2. Convert z2 to correlated version
-    let tmp-corr item species-number diam-corr
+    let tmp-corr item species-number dbc-corr
     set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
 
     ;; 3. Back transform to asym and lrc
-    set diam-asym z1 * item species-number diam-asym-sd + item species-number diam-asym-mean
-    set diam-asym diam-asym + item species-number diam-asym-wc * [wc] of patch-here
-    set diam-lrc z1 * item species-number diam-lrc-sd + item species-number diam-lrc-mean
-    set diam-lrc diam-lrc + item species-number diam-lrc-wc * [wc] of patch-here
+    set dbc-asym z1 * item species-number dbc-asym-sd + item species-number dbc-asym-mean
+    set dbc-asym dbc-asym + item species-number dbc-asym-wc * [wc] of patch-here
+    set dbc-lrc z1 * item species-number dbc-lrc-sd + item species-number dbc-lrc-mean
+    set dbc-lrc dbc-lrc + item species-number dbc-lrc-wc * [wc] of patch-here
 
   ]
 end
@@ -1127,10 +1127,10 @@ to get-cwood-params
   ]
 end
 
-to calc-diam
+to calc-dbc
   ;; Equation from https://stat.ethz.ch/R-manual/R-devel/library/stats/html/SSasympOrig.html
   ;; Asym*(1 - exp(-exp(lrc)*input))
-  set diam diam-asym * ( 1 - exp(- exp( diam-lrc ) * age ))
+  set dbc dbc-asym * ( 1 - exp(- exp( dbc-lrc ) * age ))
 end
 
 to calc-hgt
@@ -1147,8 +1147,8 @@ end
 
 to calc-cwood ;; place holder
   ;; Could merge this into single statement
-  let ldiam ln diam
-  let lcwood ldiam * cwood-coef
+  let ldbc ln dbc
+  let lcwood ldbc * cwood-coef
   set cwood exp lcwood
   set avail-megajoules ((cwood * mj-energy-multiplier) * Live_wood_energy) ;; calculate the energy available in the tree - but lower that energy total greatly since tree is alive
 end
@@ -1167,7 +1167,7 @@ to calc-cwood-hgt
   set cwood a * carea ^ b
 end
 
-to calc-diam-drc
+to calc-dbc-drc
   ;; Converts DBH to DRC (following Chojnacky et al, West. J. Appl. For. 14, 14–16, table 2)
   ;; Note that these values are for measurements in cm
   let B0 -6.818
@@ -1185,7 +1185,7 @@ to calc-diam-drc
   ]
   ;; Eqn pg 16 (inverted)
   ;; dbh = B0 + B1 * drc + B2 * stems-dummy
-  set drc ( ( diam * 100 ) - B0 - B2 * stems-dummy ) / ( B1 * 100 )
+  set drc ( ( dbc * 100 ) - B0 - B2 * stems-dummy ) / ( B1 * 100 )
 
 end
 
@@ -1205,7 +1205,7 @@ to calc-drc-cwood
     set B1 2.431
   ]
 
-  let lcwood B0 + B1 * log (100 * diam) 10
+  let lcwood B0 + B1 * log (100 * drc) 10
   set cwood 10 ^ lcwood
 
 end
@@ -1253,7 +1253,7 @@ to recruitment
   ]
 
   ;; Assign allometric coefficients
-  get-diam-params
+  get-dbc-params
   get-hgt-params
   get-carea-params
   get-cwood-params
@@ -1409,7 +1409,7 @@ NIL
 0.25
 true
 false
-"" "\nif Show_plots = \"show_all_plots\" [\nask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]\n]"
+"" "\nif Show_plots = \"show_all_plots\" [\nask trees with [ species-number = 0 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks dbc\n]\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -1427,7 +1427,7 @@ NIL
 0.1
 true
 false
-"" "if Show_plots = \"show_all_plots\" [\nask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks diam\n]\n]"
+"" "if Show_plots = \"show_all_plots\" [\nask trees with [ species-number = 1 ][\n  create-temporary-plot-pen (word who)\n  set-plot-pen-color color\n  plotxy ticks dbc\n]\n]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -1948,25 +1948,6 @@ false
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
-PLOT
-1250
-460
-1450
-610
-plot 2
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -6565750 true "" "if Show_plots = \"show_all_plots\" [plot mean [cwood] of trees with [ species-number = 0 ]]"
-"pen-1" 1.0 0 -13210332 true "" "if Show_plots = \"show_all_plots\" [plot mean [cwood] of trees with [ species-number = 1 ]]"
-
 CHOOSER
 435
 705
@@ -2008,7 +1989,7 @@ forest-generation-period
 forest-generation-period
 0
 500
-50.0
+500.0
 50
 1
 years
