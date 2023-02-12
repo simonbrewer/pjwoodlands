@@ -1194,18 +1194,21 @@ to calc-drc-cwood
   ;; Equation and coefficients from Grier et al (1992; For. Ecol. Managment, 50, 331-350, table 2)
   let B0 0
   let B1 1
+  let tmp-drc 0
 
   if species-number = 0 [ ;; Pine
     set B0 -2.588
     set B1 2.955
+    set tmp-drc drc
   ]
 
   if species-number = 1 [ ;; Junpier
     set B0 -2.297
     set B1 2.431
+    set tmp-drc sqrt ( ( drc ^ 2 ) * stems )
   ]
 
-  let lcwood B0 + B1 * log (100 * drc) 10
+  let lcwood B0 + B1 * log (100 * tmp-drc) 10
   set cwood 10 ^ lcwood
 
 end
@@ -1891,7 +1894,7 @@ need_variance
 need_variance
 0
 15000
-0.0
+1000.0
 1000
 1
 mj
@@ -1956,7 +1959,7 @@ CHOOSER
 Show_Plots
 Show_Plots
 "show_all_plots" "show_forager_plots" "show_no_plots"
-2
+0
 
 SWITCH
 575

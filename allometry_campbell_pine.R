@@ -36,7 +36,7 @@ ages <- seq(0, 150)
 diam <- asym * ( 1 - exp(- exp( lrc ) * ages ))
 
 ## 5. Chojnacky eq (dbh - drc)
-stems <- 2
+stems <- 1
 sstems <- ifelse(stems > 1, 1, 0)
 
 pB0 <- -4.9209
