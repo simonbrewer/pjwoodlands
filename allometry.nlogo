@@ -101,6 +101,15 @@ to set-params
   ;; Parameter correlations (asym vs. lrc)
   set diam-corr [ -0.886 -0.866 ]
 
+  set diam-asym-mean [ 0.336 0.303 ]
+  set diam-asym-sd [ 0.303 0.097 ]
+  set diam-asym-wc [ 0.0067 -0.0488 ]
+  set diam-lrc-mean [ -3.645 -0.897 ]
+  set diam-lrc-sd [ 1.52 0.72 ]
+  set diam-lrc-wc [ -0.0383 1.718 ]
+  ;; Parameter correlations (asym vs. lrc)
+  set diam-corr [ -0.513 -0.777 ]
+
   ;; log cwood to log diameter
   set cwood-mean [ 1.123 1.381 ]
   set cwood-sd [ 0.395 0.352 ]
@@ -663,7 +672,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.0
+NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
