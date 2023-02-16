@@ -212,7 +212,7 @@ to setup
 
   ;; ask patches [set pcolor scale-color red item 0 max-suitability 0 1 ]
   ;; Create initial trees (50/50 pine or juniper)
-  ask n-of (round (0.1 * count patches)) patches [
+  ask n-of (round (0.15 * count patches)) patches [
     sprout-trees 1 [
       ifelse item 0 max-suitability > item 1 max-suitability
       [
@@ -254,7 +254,7 @@ to go
     profiler:stop
     csv:to-file "profiler_data.csv"
     profiler:data stop]
-  if ticks > n-time-steps [
+  if ticks > (years-to-forage + forest-generation-period) [ ;;if model is at point where forest generated and we have simulated the pre-defined years, stop
     if fire? [
       ;;ask turtles with [not live?] [die] ;; test for fires with all dead trees removed
       repeat 50 [
@@ -1322,11 +1322,11 @@ end
 GRAPHICS-WINDOW
 5
 10
-409
-415
+453
+459
 -1
 -1
-6.0
+5.0
 1
 10
 1
@@ -1337,9 +1337,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-65
+87
 0
-65
+87
 1
 1
 1
@@ -1347,10 +1347,10 @@ ticks
 30.0
 
 BUTTON
-10
-460
-76
-493
+15
+485
+81
+518
 NIL
 setup\n
 NIL
@@ -1364,10 +1364,10 @@ NIL
 1
 
 PLOT
-940
-460
-1140
-580
+955
+465
+1155
+585
 Soil WC
 NIL
 NIL
@@ -1382,10 +1382,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" [histogram [wc] of patches]"
 
 BUTTON
-10
-500
-73
-533
+15
+525
+78
+558
 NIL
 go
 T
@@ -1399,9 +1399,9 @@ NIL
 1
 
 PLOT
-450
+460
 10
-650
+660
 160
 Tree diameter (0)
 NIL
@@ -1417,9 +1417,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-450
+460
 160
-650
+660
 310
 Tree diameter (1)
 NIL
@@ -1435,9 +1435,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-1050
+1060
 310
-1250
+1260
 460
 CWood coefs
 NIL
@@ -1454,9 +1454,9 @@ PENS
 "pen-1" 0.2 1 -2674135 true "" "if Show_plots = \"show_all_plots\" [histogram [cwood-coef] of trees with [species-number = 1]]"
 
 PLOT
-850
+860
 10
-1050
+1060
 160
 CWood (0)
 NIL
@@ -1472,9 +1472,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-850
+860
 160
-1050
+1060
 310
 CWood (1)
 NIL
@@ -1490,9 +1490,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-450
+460
 310
-650
+660
 460
 Dead trees / tick
 NIL
@@ -1508,9 +1508,9 @@ PENS
 "dead" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" [plot dead-trees]"
 
 PLOT
-650
+660
 310
-850
+860
 460
 New trees / tick
 NIL
@@ -1526,9 +1526,9 @@ PENS
 "default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" [plot new-trees]"
 
 PLOT
-850
+860
 310
-1050
+1060
 460
 Removed trees / tick
 NIL
@@ -1544,10 +1544,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" [plot removed-trees]"
 
 PLOT
-450
 460
-945
-580
+465
+955
+585
 Age distribution
 NIL
 NIL
@@ -1563,10 +1563,10 @@ PENS
 "juniper" 1.0 1 -2674135 true "" "if Show_plots = \"show_all_plots\" [histogram [age] of trees with [species-number = 1]]"
 
 BUTTON
-85
-460
-182
-493
+90
+485
+187
+518
 NIL
 show-burn
 NIL
@@ -1580,10 +1580,10 @@ NIL
 1
 
 SWITCH
-85
-500
-188
-533
+90
+525
+193
+558
 fire?
 fire?
 0
@@ -1591,10 +1591,10 @@ fire?
 -1000
 
 PLOT
-205
-460
-445
-580
+210
+465
+450
+585
 plot 1
 NIL
 NIL
@@ -1611,24 +1611,9 @@ PENS
 
 SLIDER
 15
-545
-187
-578
-n-time-steps
-n-time-steps
-10
-1000
-150.0
-10
-1
-NIL
-HORIZONTAL
-
-SLIDER
-15
-625
+630
 300
-658
+663
 Excess_volume_taken_pinyon
 Excess_volume_taken_pinyon
 0
@@ -1641,14 +1626,14 @@ HORIZONTAL
 
 SLIDER
 15
-665
+670
 300
-698
+703
 Excess_volume_taken_juniper
 Excess_volume_taken_juniper
 0
 0.5
-0.3
+0.25
 0.01
 1
 percent truck bed
@@ -1656,14 +1641,14 @@ HORIZONTAL
 
 SLIDER
 15
-585
+590
 187
-618
+623
 num_foragers
 num_foragers
 0
 30
-5.0
+1.0
 1
 1
 NIL
@@ -1671,9 +1656,9 @@ HORIZONTAL
 
 SLIDER
 15
-705
+710
 247
-738
+743
 Max_truck_capacity
 Max_truck_capacity
 0.20
@@ -1686,9 +1671,9 @@ HORIZONTAL
 
 SLIDER
 585
-585
+590
 782
-618
+623
 proportion_harvest_remain
 proportion_harvest_remain
 0
@@ -1701,23 +1686,23 @@ HORIZONTAL
 
 SLIDER
 305
-625
+630
 567
-658
+663
 Live_wood_energy
 Live_wood_energy
 0
 1
 0.0
-0.0001
+0.025
 1
 % of ideal max
 HORIZONTAL
 
 PLOT
-1250
+1260
 10
-1560
+1570
 160
 Dist. Travelled per Year
 Tick
@@ -1730,33 +1715,33 @@ true
 true
 "" ""
 PENS
-"Mean" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot mean [dist-travel-year] of foragers]]"
-"Max" 1.0 0 -10141563 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot max [dist-travel-year] of foragers]]"
-"Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot min [dist-travel-year] of foragers]]"
-"Max-travel" 1.0 0 -7500403 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot Max-travel]]"
+"Mean" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot mean [dist-travel-year] of foragers]]"
+"Max" 1.0 0 -10141563 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot max [dist-travel-year] of foragers]]"
+"Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot min [dist-travel-year] of foragers]]"
+"Max-travel" 1.0 0 -7500403 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot Max-travel]]"
 
 PLOT
-1250
+1260
 310
-1450
+1460
 460
 Foraging Trips per Turn (Histogram)
 No. Trips
 Frequency
 1.0
-10.0
+50.0
 0.0
 10.0
 true
 false
 "" ""
 PENS
-"default" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [histogram all-trips-home]]"
+"default" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [histogram all-trips-home]]"
 
 PLOT
-1050
+1060
 10
-1250
+1260
 160
 Proportion all Foragers not meeting energy need
 Tick
@@ -1769,18 +1754,18 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [ if ticks > 49 [plot count foragers with [energy-obtained < yearly-need] / num_foragers]]"
+"default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > forest-generation-period [plot count foragers with [energy-obtained < yearly-need] / num_foragers]]"
 
 SLIDER
 305
-665
+670
 587
-698
+703
 Standing_dead_energy
 Standing_dead_energy
 0
 1
-0.825
+0.9
 0.025
 1
 % of ideal max
@@ -1788,24 +1773,24 @@ HORIZONTAL
 
 SLIDER
 15
-745
+750
 187
-778
+783
 Max-travel
 Max-travel
-25
-1000
-700.0
-25
+0
+10000
+10000.0
+500
 1
 NIL
 HORIZONTAL
 
 SLIDER
 255
-705
+710
 427
-738
+743
 Time_vs_Energy_max
 Time_vs_Energy_max
 0
@@ -1817,9 +1802,9 @@ NIL
 HORIZONTAL
 
 PLOT
-1050
+1060
 160
-1250
+1260
 310
 Extra energy (mj) obtained
 NIL
@@ -1832,14 +1817,14 @@ true
 true
 "" ""
 PENS
-"Mean" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot mean [extra-energy-obtained] of foragers]]"
-"Max" 1.0 0 -10141563 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot max [extra-energy-obtained] of foragers]]"
-"Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot min [extra-energy-obtained] of foragers]]"
+"Mean" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot mean [extra-energy-obtained] of foragers]]"
+"Max" 1.0 0 -10141563 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot max [extra-energy-obtained] of foragers]]"
+"Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot min [extra-energy-obtained] of foragers]]"
 
 PLOT
-1250
+1260
 160
-1450
+1460
 310
 Wood Harvested by Species
 NIL
@@ -1852,14 +1837,14 @@ true
 true
 "" ""
 PENS
-"Pinyon" 1.0 0 -8330359 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot sum [lifetime-pinyon] of foragers]]"
-"Juniper" 1.0 0 -14333415 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > 49 [plot sum [lifetime-juniper] of foragers]]"
+"Pinyon" 1.0 0 -8330359 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot sum [lifetime-pinyon] of foragers]]"
+"Juniper" 1.0 0 -14333415 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot sum [lifetime-juniper] of foragers]]"
 
 SLIDER
-205
-745
-392
-778
+195
+750
+382
+783
 stand-size
 stand-size
 1
@@ -1872,39 +1857,39 @@ HORIZONTAL
 
 SLIDER
 195
-585
+590
 330
-618
+623
 avg_base_need
 avg_base_need
-15000
-40000
-15000.0
-1000
+20000
+180000
+100000.0
+10000
 1
 mj
 HORIZONTAL
 
 SLIDER
 335
-585
+590
 455
-618
+623
 need_variance
 need_variance
 0
-15000
-1000.0
-1000
+20000
+0.0
+5000
 1
 mj
 HORIZONTAL
 
 SLIDER
 460
-585
+590
 580
-618
+623
 need_multiplier
 need_multiplier
 0
@@ -1916,9 +1901,9 @@ NIL
 HORIZONTAL
 
 PLOT
-650
+660
 10
-850
+860
 160
 Tree DRC (0)
 NIL
@@ -1934,9 +1919,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-650
+660
 160
-850
+860
 310
 Tree DRC (1)
 NIL
@@ -1953,19 +1938,19 @@ PENS
 
 CHOOSER
 435
-705
+710
 592
-750
+755
 Show_Plots
 Show_Plots
 "show_all_plots" "show_forager_plots" "show_no_plots"
-0
+1
 
 SWITCH
 575
-625
+630
 702
-658
+663
 show_visuals
 show_visuals
 0
@@ -1974,9 +1959,9 @@ show_visuals
 
 SWITCH
 710
-625
+630
 827
-658
+663
 record_csv
 record_csv
 1
@@ -1985,14 +1970,29 @@ record_csv
 
 SLIDER
 595
-665
+670
 812
-698
+703
 forest-generation-period
 forest-generation-period
 0
 500
-500.0
+200.0
+50
+1
+years
+HORIZONTAL
+
+SLIDER
+600
+710
+772
+743
+years-to-forage
+years-to-forage
+50
+500
+100.0
 50
 1
 years
