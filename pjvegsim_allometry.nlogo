@@ -11,7 +11,7 @@
 ;; new updates with total biomass equations based on FIA data
 ;; from Cunliffe et al; McIntire et al
 
-extensions [ csv profiler ]
+extensions [ csv ]
 
 breed [trees tree]
 breed [foragers forager]
@@ -73,13 +73,34 @@ globals [
   fire-size
   all-fire-sizes
 
-  ;; Agent tracking variables
+  ;; Output tracking variables
   all-agent-truckload-sum ;;running list of total truckload space used by each agent each turn
   all-trips-home ;;running list of the total number of foraging trips taken per turn per agent
   all-agent-wood-taken ;;running list of total wood taken by each agent each turn
+  met-need-list ;running list of proportion foragers meeting need per tick
+  mean-dist-list ;running list of average forager distance travelled per tick
+  mean-trips-list ;running list of average # trips per forager per tick
+  sd-trips-list ;running list of standard deviation in # trips per forager per tick
+  mean-energy-list ;running list of average amount energy obtained by foragers each tick
+  mean-kgwood-list ;running list of average amount (kg) wood taken by foragers each tick
+  live-pbio-list ;running list of live pinyon biomass per tick
+  stand-pbio-list ;running list of standing dead pinyon per tick
+  fall-pbio-list ;running list of fallend dead pinyon per tick
+  live-jbio-list ;juniper list
+  stand-jbio-list
+  fall-jbio-list
+  count-p-trees ;count of pinyon trees per turn
+  count-j-trees ;count of juniper trees per turn
+  mean-agep-list ;running list of average pinyon tree age
+  mean-agej-list ;juniper age list
+  sd-agep-list ;running list of standard-deviation in pinyon tree age
+  sd-agej-list ;running list of juniper age standard deviation
+  ticks-no-trees ;count of the # of ticks where no trees exist
+
 
   ;; Growth model
   growth-model
+
 ]
 
 trees-own [
@@ -183,9 +204,7 @@ patches-own [
 
 to setup
   ca
-  reset-timer
   reset-ticks
-  profiler:reset
 
   ;; hard code growth model for now (choices are 'guess' or 'grier'
   set growth-model "grier"
@@ -240,21 +259,21 @@ to setup
   set all-trips-home [];;running list of the total number of foraging trips taken per turn per agent
   set all-agent-wood-taken [];;running list of total wood taken by each agent each turn
 
+  ;:Output tracking
+  setup-output-lists
+
   ;; Create human foragers
   make-foragers
 end
 
 to go
-  profiler:start                                 ;; start profiling
   set dead-trees 0
   set new-trees 0
   set removed-trees 0
 
-  if not any? trees with [live?] [print timer
-    profiler:stop
-    csv:to-file "profiler_data.csv"
-    profiler:data stop]
-  if ticks > (years-to-forage + forest-generation-period) [ ;;if model is at point where forest generated and we have simulated the pre-defined years, stop
+  ;  if not any? trees with [live?] [stop]
+
+  if ticks > (years-to-forage + woodland-generation-period) [ ;;if model is at point where woodland generated and we have simulated the pre-defined years, stop
     if fire? [
       ;;ask turtles with [not live?] [die] ;; test for fires with all dead trees removed
       repeat 50 [
@@ -264,9 +283,6 @@ to go
         reset-trees
       ]
     ]
-    print timer
-    profiler:stop
-    csv:to-file "profiler_data.csv" profiler:data
     stop
   ]
 
@@ -294,17 +310,18 @@ to go
     remove-trees
   ]
 
-  if ticks >= forest-generation-period[
+  if ticks >= woodland-generation-period[
   ask patches [
     ;; Update stand (have all stands update to accurate values)
     update-stand
   ]]
 
   ;; Begin forager behavior
-  if ticks >= forest-generation-period [ ;; allow forest growth and death to happen before foragers begin operating
+  if ticks >= woodland-generation-period [ ;; allow woodland growth and death to happen before foragers begin operating
   reset-state-vars
   forage
-  if record_csv [report-forager-vars]
+  record-output-lists
+  if record_csv [record-output]
   ]
 
   tick
@@ -708,6 +725,7 @@ ifelse finished = TRUE
               set harvested-from? TRUE ;record that the patch has been harvested from
               ;color-patch ;run the color patch code which will only color this patch
           ]
+          ask patch-here [set pcolor yellow]
           ask patches in-radius stand-size [update-stand] ;have all cells that include the harvested patch in their stand values update the stand values
 
           set finished TRUE ;agent records that they have finished harvesting for the year (i.e., met their quota)
@@ -731,6 +749,7 @@ ifelse finished = TRUE
               set harvested-from? TRUE ;record that the patch has been harvested from
               ;color-patch ;run the color patch code which will only color this patch
           ]
+          ask patch-here [set pcolor yellow]
           ask patches in-radius stand-size [update-stand] ;have all cells that include the harvested patch in their stand values update the stand values
 
           ;then begin the process of taking extra (including from current patch)
@@ -779,6 +798,7 @@ ifelse finished = TRUE
       set harvested-from? TRUE ;record that the patch has been harvested from
       ;color-patch ;run the color patch code which will only color this patch
     ]
+    ask patch-here [set pcolor yellow]
     ask patches in-radius stand-size [update-stand] ;have all cells that include the harvested patch in their stand values update the stand values
 
 
@@ -1302,21 +1322,72 @@ to-report mean-suitability-juniper
   ]
 end
 
-to report-forager-vars
-  ;this is an agent sub-model for forager agents to record annual harvest and travel data
-  file-open "forager_dat.csv" ;open the csv file
-  file-print csv:to-string [(list who ticks yearly-need energy-obtained wood-taken dist-travel-year trips-home-counter no-place extra-energy-obtained lifetime-pinyon lifetime-juniper Max-travel Time_vs_Energy_max Live_wood_energy Standing_dead_energy Excess_volume_taken_pinyon Excess_volume_taken_juniper Max_truck_capacity proportion_harvest_remain) ] of foragers ;put the data into the csv as one row with multiple columns per forager agent
-  file-close ;close the csv file
-
+to setup-output-lists
+  set all-agent-truckload-sum []
+  set all-trips-home []
+  set all-agent-wood-taken []
+  set met-need-list []
+  set mean-dist-list []
+  set mean-trips-list []
+  set sd-trips-list []
+  set mean-energy-list []
+  set mean-kgwood-list []
+  set live-pbio-list []
+  set stand-pbio-list []
+  set fall-pbio-list []
+  set live-jbio-list []
+  set stand-jbio-list []
+  set fall-jbio-list []
+  set mean-agep-list []
+  set mean-agej-list []
+  set sd-agep-list []
+  set sd-agej-list []
+  set count-p-trees []
+  set count-j-trees []
 end
 
-to profile
-  setup                                          ;; set up the model
-  profiler:start                                 ;; start profiling
-  repeat 500 [ go ]                               ;; run something you want to measure
-  profiler:stop                                  ;; stop profiling
-  csv:to-file "profiler_data.csv" profiler:data  ;; save the results
-  profiler:reset                                 ;; clear the data
+to record-output-lists
+  set met-need-list lput (count foragers with [no-place = FALSE] / count foragers) met-need-list
+  set mean-dist-list lput mean [dist-travel-year] of foragers mean-dist-list
+  set mean-trips-list lput mean [trips-home-counter] of foragers mean-trips-list
+;  if count foragers >= 2 [set sd-trips-list lput standard-deviation [trips-home-counter] of foragers sd-trips-list]
+  set mean-energy-list lput mean [energy-obtained] of foragers mean-energy-list
+  set mean-kgwood-list lput mean [wood-taken] of foragers mean-kgwood-list
+  ifelse count trees with [species = "pine" and live? = TRUE] > 0 [set live-pbio-list lput sum [cwood] of trees with [species = "pine" and live? = TRUE] live-pbio-list] [set live-pbio-list lput 0 live-pbio-list]
+  ifelse count trees with [species = "pine" and live? = FALSE and standing? = TRUE] > 0 [set stand-pbio-list lput sum [cwood] of trees with [species = "pine" and live? = FALSE and standing? = TRUE] stand-pbio-list] [set stand-pbio-list lput 0 stand-pbio-list]
+  ifelse count trees with [species = "pine" and standing? = FALSE] > 0 [set fall-pbio-list lput sum [cwood] of trees with [species = "pine" and standing? = FALSE] fall-pbio-list] [set fall-pbio-list lput 0 fall-pbio-list]
+  ifelse count trees with [species = "juniper" and live? = TRUE] > 0 [set live-jbio-list lput sum [cwood] of trees with [species = "juniper" and live? = TRUE] live-jbio-list] [set live-jbio-list lput 0 live-jbio-list]
+  ifelse count trees with [species = "juniper" and live? = FALSE and standing? = TRUE] > 0 [set stand-jbio-list lput sum [cwood] of trees with [species = "juniper" and live? = FALSE and standing? = TRUE] stand-jbio-list] [set stand-jbio-list lput 0 stand-jbio-list]
+  ifelse count trees with [species = "juniper" and standing? = FALSE] > 0 [set fall-jbio-list lput sum [cwood] of trees with [species = "juniper" and standing? = FALSE] fall-jbio-list] [set fall-jbio-list lput 0 fall-jbio-list]
+  set count-p-trees lput count trees with [species = "pine"] count-p-trees
+  set count-j-trees lput count trees with [species = "juniper"] count-j-trees
+  ifelse count trees with [species = "pine"] > 0 [set mean-agep-list lput mean [age] of trees with [species = "pine"] mean-agep-list] [set mean-agep-list lput 0 mean-agep-list]
+  ifelse count trees with [species = "juniper"] > 0 [set mean-agej-list lput mean [age] of trees with [species = "juniper"] mean-agej-list] [set mean-agej-list lput 0 mean-agej-list]
+  ;set sd-agep-list lput standard-deviation [age] of trees with [species = "pine"] sd-agep-list
+  ;set sd-agej-list lput standard-deviation [age] of trees with [species = "juniper"] sd-agej-list
+end
+
+to record-output
+  let pbio_live sum [cwood] of trees with [species = "pine" and live? = TRUE]
+  let pbio_stand sum [cwood] of trees with [species = "pine" and live? = FALSE and standing? = TRUE]
+  let pbio_fall sum [cwood] of trees with [species = "pine" and standing? = FALSE]
+
+  ;this is an agent sub-model for forager agents to record annual harvest and travel data
+  file-open "forager_dat.csv" ;open the csv file
+  file-print csv:to-string [(list who ticks yearly-need energy-obtained wood-taken dist-travel-year trips-home-counter no-place extra-energy-obtained
+    lifetime-pinyon lifetime-juniper Max-travel Time_vs_Energy_max Live_wood_energy Standing_dead_energy Excess_volume_taken_pinyon Excess_volume_taken_juniper
+    Max_truck_capacity proportion_harvest_remain woodland-generation-period years-to-forage) ] of foragers;put the data into the csv as one row with multiple columns per forager agent
+  file-close ;close the csv file
+
+  let out-list-woodland []
+  set out-list-woodland lput (list pbio_live pbio_stand pbio_fall ticks Max-travel Time_vs_Energy_max Live_wood_energy Standing_dead_energy Excess_volume_taken_pinyon Excess_volume_taken_juniper
+    Max_truck_capacity proportion_harvest_remain woodland-generation-period years-to-forage) out-list-woodland
+
+  file-open "woodland_dat.csv"
+  file-print csv:to-string out-list-woodland
+  ;csv:to-file "woodland_dat.csv" out-list-woodland
+  file-close
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -1586,7 +1657,7 @@ SWITCH
 558
 fire?
 fire?
-0
+1
 1
 -1000
 
@@ -1694,7 +1765,7 @@ Live_wood_energy
 0
 1
 0.0
-0.025
+0.01
 1
 % of ideal max
 HORIZONTAL
@@ -1715,10 +1786,10 @@ true
 true
 "" ""
 PENS
-"Mean" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot mean [dist-travel-year] of foragers]]"
-"Max" 1.0 0 -10141563 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot max [dist-travel-year] of foragers]]"
-"Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot min [dist-travel-year] of foragers]]"
-"Max-travel" 1.0 0 -7500403 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot Max-travel]]"
+"Mean" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot mean [dist-travel-year] of foragers]]"
+"Max" 1.0 0 -10141563 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot max [dist-travel-year] of foragers]]"
+"Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot min [dist-travel-year] of foragers]]"
+"Max-travel" 1.0 0 -7500403 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot Max-travel]]"
 
 PLOT
 1260
@@ -1736,7 +1807,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [histogram all-trips-home]]"
+"default" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [histogram all-trips-home]]"
 
 PLOT
 1060
@@ -1754,7 +1825,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > forest-generation-period [plot count foragers with [energy-obtained < yearly-need] / num_foragers]]"
+"default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > woodland-generation-period [plot count foragers with [energy-obtained < yearly-need] / num_foragers]]"
 
 SLIDER
 305
@@ -1766,7 +1837,7 @@ Standing_dead_energy
 0
 1
 0.9
-0.025
+0.01
 1
 % of ideal max
 HORIZONTAL
@@ -1779,11 +1850,11 @@ SLIDER
 Max-travel
 Max-travel
 0
-10000
-10000.0
+5000
+2500.0
 500
 1
-NIL
+patches
 HORIZONTAL
 
 SLIDER
@@ -1817,9 +1888,9 @@ true
 true
 "" ""
 PENS
-"Mean" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot mean [extra-energy-obtained] of foragers]]"
-"Max" 1.0 0 -10141563 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot max [extra-energy-obtained] of foragers]]"
-"Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot min [extra-energy-obtained] of foragers]]"
+"Mean" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot mean [extra-energy-obtained] of foragers]]"
+"Max" 1.0 0 -10141563 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot max [extra-energy-obtained] of foragers]]"
+"Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot min [extra-energy-obtained] of foragers]]"
 
 PLOT
 1260
@@ -1837,8 +1908,8 @@ true
 true
 "" ""
 PENS
-"Pinyon" 1.0 0 -8330359 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot sum [lifetime-pinyon] of foragers]]"
-"Juniper" 1.0 0 -14333415 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= forest-generation-period [plot sum [lifetime-juniper] of foragers]]"
+"Pinyon" 1.0 0 -8330359 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [lifetime-pinyon] of foragers]]"
+"Juniper" 1.0 0 -14333415 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [lifetime-juniper] of foragers]]"
 
 SLIDER
 195
@@ -1862,9 +1933,9 @@ SLIDER
 623
 avg_base_need
 avg_base_need
-20000
-180000
-100000.0
+60000
+220000
+60000.0
 10000
 1
 mj
@@ -1944,7 +2015,7 @@ CHOOSER
 Show_Plots
 Show_Plots
 "show_all_plots" "show_forager_plots" "show_no_plots"
-1
+2
 
 SWITCH
 575
@@ -1953,7 +2024,7 @@ SWITCH
 663
 show_visuals
 show_visuals
-0
+1
 1
 -1000
 
@@ -1971,10 +2042,10 @@ record_csv
 SLIDER
 595
 670
-812
+832
 703
-forest-generation-period
-forest-generation-period
+woodland-generation-period
+woodland-generation-period
 0
 500
 200.0
@@ -2380,6 +2451,93 @@ NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment_export_end_run" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="300"/>
+    <metric>sum met-need-list / years-to-forage</metric>
+    <metric>sum met-need-list / years-to-forage</metric>
+    <metric>sum mean-dist-list / years-to-forage</metric>
+    <metric>sum mean-trips-list / years-to-forage</metric>
+    <metric>sum mean-energy-list / years-to-forage</metric>
+    <metric>sum mean-kgwood-list / years-to-forage</metric>
+    <metric>sum live-pbio-list / years-to-forage</metric>
+    <metric>sum stand-pbio-list / years-to-forage</metric>
+    <metric>sum fall-pbio-list / years-to-forage</metric>
+    <metric>sum live-jbio-list / years-to-forage</metric>
+    <metric>sum stand-jbio-list / years-to-forage</metric>
+    <metric>sum fall-jbio-list / years-to-forage</metric>
+    <metric>mean count-p-trees</metric>
+    <metric>mean count-j-trees</metric>
+    <metric>ticks-no-trees</metric>
+    <metric>sum mean-agep-list / years-to-forage</metric>
+    <metric>sum mean-agej-list / years-to-forage</metric>
+    <enumeratedValueSet variable="Show_Plots">
+      <value value="&quot;show_no_plots&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="record_csv">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="need_multiplier">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Excess_volume_taken_pinyon">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="avg_base_need">
+      <value value="60000"/>
+      <value value="100000"/>
+      <value value="140000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fire?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Live_wood_energy">
+      <value value="0"/>
+      <value value="0.15"/>
+      <value value="0.85"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="years-to-forage">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stand-size">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="need_variance">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Max-travel">
+      <value value="5000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Time_vs_Energy_max">
+      <value value="0"/>
+      <value value="0.5"/>
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="proportion_harvest_remain">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num_foragers">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Standing_dead_energy">
+      <value value="0.9"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Max_truck_capacity">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="woodland-generation-period">
+      <value value="200"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Excess_volume_taken_juniper">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show_visuals">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
