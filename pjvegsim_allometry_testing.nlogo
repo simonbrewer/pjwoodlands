@@ -292,6 +292,7 @@ to go
     stop
   ]
 
+  print "Growth and recruitment"
   ask trees with [live?] [
     grow
     if age > reproductive-age and any? neighbors with [not occupied?] [
@@ -301,22 +302,26 @@ to go
   ]
 
   ;; Disturb trees
+  print "Disturbance"
   ask trees with [not live? and standing?] [
     disturbance
     set age-since-death age-since-death + 1
   ]
 
   ;; Decay trees
+  print "Decay"
   ask trees with [not live?] [
     decay
   ]
 
   ;; Remove some of the dead trees
+  print "Removal"
   ask trees with [not live?] [
     remove-trees
   ]
 
   if ticks >= woodland-generation-period[
+    print "update-stand"
     ask patches [
       ;; Update stand (have all stands update to accurate values)
       update-stand
@@ -324,7 +329,9 @@ to go
 
   ;; Begin forager behavior
   if ticks >= woodland-generation-period [ ;; allow woodland growth and death to happen before foragers begin operating
+    print "reset"
     reset-state-vars
+    print "foraging"
     forage
     record-output-lists
     if record_csv [record-output]
@@ -590,6 +597,7 @@ to reset-state-vars
 end
 
 to forage
+  print "    forage"
   ;this is an agent sub-model for foraging to acquire firewood for the year
   ask trees [set temp-RR 0]
   ask foragers [
@@ -600,6 +608,7 @@ to forage
 end
 
 to find-best-stand
+  print "    find-best-stand"
   ;this is an agent sub-model for identifying the best initial stand to forage in
   ifelse year-travel <= 0 OR extra-year-travel <= 0
     [
@@ -648,33 +657,34 @@ to find-best-tree
   let start-patch patch-here ;remember temporarily the patch the agent begins on (for the first time they move in a turn, this will be the home-base patch)
   ask trees in-radius stand-size [set travel-cost-here-home (distance start-patch + dist-from-home-base)]
   ifelse energy-obtained < yearly-need
-    [
-      set poss-trees trees in-radius stand-size with [[travel-cost-here-home] of self <= [year-travel] of myself]
+  [
+    set poss-trees trees in-radius stand-size with [[travel-cost-here-home] of self <= [year-travel] of myself]
   ]
   [
     set poss-trees trees in-radius stand-size with [[travel-cost-here-home] of self <= [extra-year-travel] of myself]
   ]
+  print "    tree: calc-temp-RR"
   ask poss-trees [calc-temp-RR]
   let best-tree max-one-of poss-trees [temp-RR] ;;identify the patch that gives the best return rate (which is a function of the kilojoules acquired from the available biomass and distance from home)
-  if  best-tree = nobody or [temp-RR] of best-tree <= 0 [;if there is no wood left to go get, set finished true, set best-patch to home patch and go-home. Best patch to home patch is because the below move code still tries to happen.
+  ifelse  best-tree = nobody or [temp-RR] of best-tree <= 0 [;if there is no wood left to go get, set finished true, set best-patch to home patch and go-home.
     set finished TRUE
-    set best-tree patch 0 0
-    set no-place TRUE
+    go-home
+  ] [;else if there is a best tree that has harvestable wood
+    move-to best-tree;;else, move to the best tree in the stand
+    ifelse energy-obtained < yearly-need
+    [  ;if the yearly need in energy is not yet met
+      set year-travel (year-travel - distance start-patch) ;;record the distance the agent has gone to the new patch
+      set dist-travel-year (dist-travel-year + distance start-patch) ;add this move distance (from current patch to new foraging patch) to the distance travelled for the year
+    ]
+    [ ;if the yearly need is met (i.e., agents are getting more firewood than min necessary
+      set extra-year-travel (extra-year-travel - distance start-patch)
+      set dist-travel-year (dist-travel-year + distance start-patch)
+    ]
   ]
-  move-to best-tree;;else, move to the best tree in the stand
-  ifelse energy-obtained < yearly-need
-  [  ;if the yearly need in energy is not yet met
-    set year-travel (year-travel - distance start-patch) ;;record the distance the agent has gone to the new patch
-    set dist-travel-year (dist-travel-year + distance start-patch) ;add this move distance (from current patch to new foraging patch) to the distance travelled for the year
-  ]
-  [ ;if the yearly need is met (i.e., agents are getting more firewood than min necessary
-    set extra-year-travel (extra-year-travel - distance start-patch)
-    set dist-travel-year (dist-travel-year + distance start-patch)
-  ]
-
 end
 
 to calc-temp-RR
+  ;print "    calc-temp-RR"
   ;this is a patch submodel (called by agents) that sets a return rate raster for foraging based on only the patches the agent can access resultant from their travel distance limit
 
   ;  ask poss-trees [ ;ask patches within a distance where the agent could get out to the patch and back home
@@ -689,6 +699,7 @@ to calc-temp-RR
 end
 
 to harvest
+  print "    harvest"
   ;this is an agent submodel for harvesting wood. In here the agent needs to take biomass from the patch, ask the patch to lose the taken biomass, ask the patch to calculate its new RR
   ;and continue to harvest / forage until they meet their yearly need (including trips home to unload if necessary). this is called by an individual agent from the forage code above
 
@@ -837,6 +848,7 @@ to find-next-best-location
   let start-patch patch-here ;have the patch the agent is currently on become the patch for which distance is used for RR
   ask trees-here [set home-base? TRUE] ;;temporarily make the current patch home for purpose of recalculating new RR raster
   ask trees in-radius stand-size [
+    print "    location: calc-temp-RR"
     calc-temp-RR ;have trees in the available stand area calculate foraging return rate
     set travel-cost-here-home (distance start-patch + dist-from-home-base) ;also get the total maximum travel cost
   ]
@@ -905,6 +917,7 @@ to go-home
       set all-trips-home lput trips-home-counter all-trips-home
       if extra-energy-obtained > 0 [set total-extra-energy-obtained lput extra-energy-obtained total-extra-energy-obtained]
       if extra-energy-obtained <= 0 [set total-extra-energy-obtained lput 0 total-extra-energy-obtained]
+      if energy-obtained < yearly-need  [set no-place TRUE]
   ]
 
 end
