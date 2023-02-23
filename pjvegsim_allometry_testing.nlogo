@@ -831,7 +831,10 @@ to harvest
             go-home ;go home and empty truck
             find-best-stand;find new location to forage based on stand values from home-base
           ]
-          [find-next-best-location];;else if the truck isn't full, find the next best location based on travelling from the current patch
+          [
+            print "    Finding next location (harvesting)"
+            find-next-best-location ;;else if the truck isn't full, find the next best location based on travelling from the current patch
+          ]
         ]
       ]; end else
 
@@ -847,10 +850,13 @@ to find-next-best-location
 
   let start-patch patch-here ;have the patch the agent is currently on become the patch for which distance is used for RR
   ask trees-here [set home-base? TRUE] ;;temporarily make the current patch home for purpose of recalculating new RR raster
+  let iter 1
   ask trees in-radius stand-size [
-    print "    location: calc-temp-RR"
+    print word "    location: calc-temp-RR " iter
+    print who
     calc-temp-RR ;have trees in the available stand area calculate foraging return rate
     set travel-cost-here-home (distance start-patch + dist-from-home-base) ;also get the total maximum travel cost
+    set iter iter + 1
   ]
 
   ifelse energy-obtained < yearly-need ;;identify viable trees as those within the current stand and that the agent can get to while still being able to get home
@@ -864,6 +870,7 @@ to find-next-best-location
   ask t-option-trees [;ask trees within the foraging radius
     if home-base? = TRUE
     [set temp-RR 0] ;;if the patch is the one the agent is currently on (i.e., already harvested from), give it a temp-RR of 0
+    print word who " " show temp-RR
   ]
 
   ask trees-here [set home-base? FALSE];;have current patch go back to not being a home patch
@@ -987,7 +994,10 @@ to continue-foraging
         go-home ;go home and empty truck
         find-best-stand
       ]
-      [find-next-best-location];;else if the truck isn't full, find the next best location based on travelling from the current patch
+      [
+        print "    Finding next location (continuing)"
+        find-next-best-location ;;else if the truck isn't full, find the next best location based on travelling from the current patch
+      ]
 
     ];; end if there is still time remaining committed to foraging
 
@@ -998,9 +1008,6 @@ to continue-foraging
     ]
 
   ];end while loop
-
-
-
 
 end
 
@@ -1870,7 +1877,7 @@ Max-travel
 Max-travel
 0
 5000
-2500.0
+5000.0
 500
 1
 patches
