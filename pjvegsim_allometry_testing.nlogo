@@ -294,15 +294,15 @@ to go
 
   print "Growth and recruitment"
   ask trees with [live?] [
-    print "----------------"
-    print who
-    print "    grow"
+    ;print "----------------"
+    ;print who
+    ;print "    grow"
     grow
     if age > reproductive-age and any? neighbors with [not occupied?] [
-      print "    reproduce"
+      ;print "    reproduce"
       reproduce species-number
     ]
-      print "    death"
+      ;print "    death"
     death
   ]
 
