@@ -294,10 +294,15 @@ to go
 
   print "Growth and recruitment"
   ask trees with [live?] [
+    print "----------------"
+    print who
+    print "    grow"
     grow
     if age > reproductive-age and any? neighbors with [not occupied?] [
+      print "    reproduce"
       reproduce species-number
     ]
+      print "    death"
     death
   ]
 
@@ -1892,7 +1897,7 @@ Time_vs_Energy_max
 Time_vs_Energy_max
 0
 1
-0.0
+0.5
 0.1
 1
 NIL
