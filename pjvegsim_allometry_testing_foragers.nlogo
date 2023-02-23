@@ -219,7 +219,9 @@ to setup
   ask patches [
     set pcolor white
     set occupied? false
-    set wc exp random-normal log-wc-mean log-wc-sd
+    ;set wc exp random-normal log-wc-mean log-wc-sd
+    ;; Deterministic WC
+    set wc exp log-wc-mean
     set n-fires 0
 
     ;; Patch suitability (not linked to wc atm)
@@ -1127,7 +1129,7 @@ to get-dbc-params
   set dbc-asym -9999
   set dbc-lrc 9999
 
-  while [ (dbc-asym < 0) or (dbc-lrc > 0) ] [ ;; check for reasonable parameter values
+  ;while [ (dbc-asym < 0) or (dbc-lrc > 0) ] [ ;; check for reasonable parameter values
                                               ;; 1. Generate z1 and z2
     let z1 random-normal 0 1
     let z2 random-normal 0 1
@@ -1137,12 +1139,21 @@ to get-dbc-params
     set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
 
     ;; 3. Back transform to asym and lrc
-    set dbc-asym z1 * item species-number dbc-asym-sd + item species-number dbc-asym-mean
-    set dbc-asym dbc-asym + item species-number dbc-asym-wc * [wc] of patch-here
-    set dbc-lrc z1 * item species-number dbc-lrc-sd + item species-number dbc-lrc-mean
-    set dbc-lrc dbc-lrc + item species-number dbc-lrc-wc * [wc] of patch-here
+    ;set dbc-asym z1 * item species-number dbc-asym-sd + item species-number dbc-asym-mean
+    ;set dbc-asym dbc-asym + item species-number dbc-asym-wc * [wc] of patch-here
+    ;set dbc-lrc z1 * item species-number dbc-lrc-sd + item species-number dbc-lrc-mean
+    ;set dbc-lrc dbc-lrc + item species-number dbc-lrc-wc * [wc] of patch-here
 
-  ]
+    ;; Deterministic
+    set dbc-asym item species-number dbc-asym-mean
+    set dbc-asym dbc-asym + item species-number dbc-asym-wc * [wc] of patch-here
+    set dbc-lrc item species-number dbc-lrc-mean
+    set dbc-lrc dbc-lrc + item species-number dbc-lrc-wc * [wc] of patch-here
+    ;print who
+    ;print dbc-asym
+    ;print dbc-lrc
+
+  ;]
 end
 
 to get-carea-params
@@ -1162,9 +1173,15 @@ to get-carea-params
     set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
 
     ;; 3. Back transform to asym and lrc
-    set carea-asym z1 * item species-number carea-asym-sd + item species-number carea-asym-mean
+    ;set carea-asym z1 * item species-number carea-asym-sd + item species-number carea-asym-mean
+    ;set carea-asym carea-asym + item species-number carea-asym-wc * [wc] of patch-here
+    ;set carea-lrc z1 * item species-number carea-lrc-sd + item species-number carea-lrc-mean
+    ;set carea-lrc carea-lrc + item species-number carea-lrc-wc * [wc] of patch-here
+
+    ;; Deterministic
+    set carea-asym item species-number carea-asym-mean
     set carea-asym carea-asym + item species-number carea-asym-wc * [wc] of patch-here
-    set carea-lrc z1 * item species-number carea-lrc-sd + item species-number carea-lrc-mean
+    set carea-lrc item species-number carea-lrc-mean
     set carea-lrc carea-lrc + item species-number carea-lrc-wc * [wc] of patch-here
 
   ]
@@ -1174,7 +1191,9 @@ to get-cwood-params
   ;; Set coefficient to relate diameter to c-wood
   set cwood-coef -9999
   while [ cwood-coef < 0 ] [
-    set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
+    ;set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
+    ;; Deterministic
+    set cwood-coef item species-number cwood-mean
   ]
 end
 
