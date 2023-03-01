@@ -207,6 +207,7 @@ to setup
   ca
   reset-ticks
 
+  set years-to-forage 1
   ;; hard code growth model for now (choices are 'guess' or 'grier'
   set growth-model "grier"
 
@@ -294,15 +295,15 @@ to go
 
   print "Growth and recruitment"
   ask trees with [live?] [
-    ;print "----------------"
-    ;print who
-    ;print "    grow"
+    print "----------------"
+    print who
+    print "    grow"
     grow
     if age > reproductive-age and any? neighbors with [not occupied?] [
-      ;print "    reproduce"
+      print "    reproduce"
       reproduce species-number
     ]
-      ;print "    death"
+      print "    death"
     death
   ]
 
@@ -857,8 +858,8 @@ to find-next-best-location
   ask trees-here [set home-base? TRUE] ;;temporarily make the current patch home for purpose of recalculating new RR raster
   let iter 1
   ask trees in-radius stand-size [
-    print word "    location: calc-temp-RR " iter
-    print who
+    ;print word "    location: calc-temp-RR " iter
+    ;print who
     calc-temp-RR ;have trees in the available stand area calculate foraging return rate
     set travel-cost-here-home (distance start-patch + dist-from-home-base) ;also get the total maximum travel cost
     set iter iter + 1
@@ -875,7 +876,7 @@ to find-next-best-location
   ask t-option-trees [;ask trees within the foraging radius
     if home-base? = TRUE
     [set temp-RR 0] ;;if the patch is the one the agent is currently on (i.e., already harvested from), give it a temp-RR of 0
-    print word who " " show temp-RR
+    ;print word who " " show temp-RR
   ]
 
   ask trees-here [set home-base? FALSE];;have current patch go back to not being a home patch
@@ -1897,7 +1898,7 @@ Time_vs_Energy_max
 Time_vs_Energy_max
 0
 1
-0.5
+0.0
 0.1
 1
 NIL
@@ -2094,7 +2095,7 @@ years-to-forage
 years-to-forage
 50
 500
-100.0
+2.0
 50
 1
 years
