@@ -17,6 +17,7 @@ breed [trees tree]
 breed [foragers forager]
 
 globals [
+
   ;; Parameters for deriving allometric equation (height)
   hgt-asym-mean
   hgt-lrc-mean
@@ -218,12 +219,7 @@ to setup
   ask patches [
     set pcolor white
     set occupied? false
-    ;; Stochastic WC
-    ;set wc exp random-normal log-wc-mean log-wc-sd
-    ;; Deterministic WC
-    set wc exp log-wc-mean
-    set n-fires 0
-
+    set wc exp random-normal log-wc-mean log-wc-sd
     set n-fires 0
 
     ;; Patch suitability (not linked to wc atm)
@@ -272,6 +268,9 @@ to setup
 end
 
 to go
+
+  print "-----------------------------------------------------------------------------------"
+  print "New tick"
   set dead-trees 0
   set new-trees 0
   set removed-trees 0
@@ -288,34 +287,46 @@ to go
         reset-trees
       ]
     ]
+    print "-----------------------------------------------------------------------------------"
+    print "Stopping"
     stop
   ]
 
+  print "Growth and recruitment"
   ask trees with [live?] [
+    ;print "----------------"
+    ;print who
+    ;print "    grow"
     grow
     if age > reproductive-age and any? neighbors with [not occupied?] [
+      ;print "    reproduce"
       reproduce species-number
     ]
+      ;print "    death"
     death
   ]
 
   ;; Disturb trees
+  print "Disturbance"
   ask trees with [not live? and standing?] [
     disturbance
     set age-since-death age-since-death + 1
   ]
 
   ;; Decay trees
+  print "Decay"
   ask trees with [not live?] [
     decay
   ]
 
   ;; Remove some of the dead trees
+  print "Removal"
   ask trees with [not live?] [
     remove-trees
   ]
 
   if ticks >= woodland-generation-period[
+    print "update-stand"
     ask patches [
       ;; Update stand (have all stands update to accurate values)
       update-stand
@@ -323,7 +334,9 @@ to go
 
   ;; Begin forager behavior
   if ticks >= woodland-generation-period [ ;; allow woodland growth and death to happen before foragers begin operating
+    print "reset"
     reset-state-vars
+    print "foraging"
     forage
     record-output-lists
     if record_csv [record-output]
@@ -589,6 +602,7 @@ to reset-state-vars
 end
 
 to forage
+  print "    forage"
   ;this is an agent sub-model for foraging to acquire firewood for the year
   ask trees [set temp-RR 0]
   ask foragers [
@@ -599,6 +613,7 @@ to forage
 end
 
 to find-best-stand
+  print "    find-best-stand"
   ;this is an agent sub-model for identifying the best initial stand to forage in
   ifelse year-travel <= 0 OR extra-year-travel <= 0
     [
@@ -647,33 +662,34 @@ to find-best-tree
   let start-patch patch-here ;remember temporarily the patch the agent begins on (for the first time they move in a turn, this will be the home-base patch)
   ask trees in-radius stand-size [set travel-cost-here-home (distance start-patch + dist-from-home-base)]
   ifelse energy-obtained < yearly-need
-    [
-      set poss-trees trees in-radius stand-size with [[travel-cost-here-home] of self <= [year-travel] of myself]
+  [
+    set poss-trees trees in-radius stand-size with [[travel-cost-here-home] of self <= [year-travel] of myself]
   ]
   [
     set poss-trees trees in-radius stand-size with [[travel-cost-here-home] of self <= [extra-year-travel] of myself]
   ]
+  print "    tree: calc-temp-RR"
   ask poss-trees [calc-temp-RR]
   let best-tree max-one-of poss-trees [temp-RR] ;;identify the patch that gives the best return rate (which is a function of the kilojoules acquired from the available biomass and distance from home)
-  if  best-tree = nobody or [temp-RR] of best-tree <= 0 [;if there is no wood left to go get, set finished true, set best-patch to home patch and go-home. Best patch to home patch is because the below move code still tries to happen.
+  ifelse  best-tree = nobody or [temp-RR] of best-tree <= 0 [;if there is no wood left to go get, set finished true, set best-patch to home patch and go-home.
     set finished TRUE
-    set best-tree patch 0 0
-    set no-place TRUE
+    go-home
+  ] [;else if there is a best tree that has harvestable wood
+    move-to best-tree;;else, move to the best tree in the stand
+    ifelse energy-obtained < yearly-need
+    [  ;if the yearly need in energy is not yet met
+      set year-travel (year-travel - distance start-patch) ;;record the distance the agent has gone to the new patch
+      set dist-travel-year (dist-travel-year + distance start-patch) ;add this move distance (from current patch to new foraging patch) to the distance travelled for the year
+    ]
+    [ ;if the yearly need is met (i.e., agents are getting more firewood than min necessary
+      set extra-year-travel (extra-year-travel - distance start-patch)
+      set dist-travel-year (dist-travel-year + distance start-patch)
+    ]
   ]
-  move-to best-tree;;else, move to the best tree in the stand
-  ifelse energy-obtained < yearly-need
-  [  ;if the yearly need in energy is not yet met
-    set year-travel (year-travel - distance start-patch) ;;record the distance the agent has gone to the new patch
-    set dist-travel-year (dist-travel-year + distance start-patch) ;add this move distance (from current patch to new foraging patch) to the distance travelled for the year
-  ]
-  [ ;if the yearly need is met (i.e., agents are getting more firewood than min necessary
-    set extra-year-travel (extra-year-travel - distance start-patch)
-    set dist-travel-year (dist-travel-year + distance start-patch)
-  ]
-
 end
 
 to calc-temp-RR
+  ;print "    calc-temp-RR"
   ;this is a patch submodel (called by agents) that sets a return rate raster for foraging based on only the patches the agent can access resultant from their travel distance limit
 
   ;  ask poss-trees [ ;ask patches within a distance where the agent could get out to the patch and back home
@@ -688,6 +704,7 @@ to calc-temp-RR
 end
 
 to harvest
+  print "    harvest"
   ;this is an agent submodel for harvesting wood. In here the agent needs to take biomass from the patch, ask the patch to lose the taken biomass, ask the patch to calculate its new RR
   ;and continue to harvest / forage until they meet their yearly need (including trips home to unload if necessary). this is called by an individual agent from the forage code above
 
@@ -819,7 +836,10 @@ to harvest
             go-home ;go home and empty truck
             find-best-stand;find new location to forage based on stand values from home-base
           ]
-          [find-next-best-location];;else if the truck isn't full, find the next best location based on travelling from the current patch
+          [
+            print "    Finding next location (harvesting)"
+            find-next-best-location ;;else if the truck isn't full, find the next best location based on travelling from the current patch
+          ]
         ]
       ]; end else
 
@@ -835,9 +855,13 @@ to find-next-best-location
 
   let start-patch patch-here ;have the patch the agent is currently on become the patch for which distance is used for RR
   ask trees-here [set home-base? TRUE] ;;temporarily make the current patch home for purpose of recalculating new RR raster
+  let iter 1
   ask trees in-radius stand-size [
+    print word "    location: calc-temp-RR " iter
+    print who
     calc-temp-RR ;have trees in the available stand area calculate foraging return rate
     set travel-cost-here-home (distance start-patch + dist-from-home-base) ;also get the total maximum travel cost
+    set iter iter + 1
   ]
 
   ifelse energy-obtained < yearly-need ;;identify viable trees as those within the current stand and that the agent can get to while still being able to get home
@@ -851,6 +875,7 @@ to find-next-best-location
   ask t-option-trees [;ask trees within the foraging radius
     if home-base? = TRUE
     [set temp-RR 0] ;;if the patch is the one the agent is currently on (i.e., already harvested from), give it a temp-RR of 0
+    print word who " " show temp-RR
   ]
 
   ask trees-here [set home-base? FALSE];;have current patch go back to not being a home patch
@@ -904,6 +929,7 @@ to go-home
       set all-trips-home lput trips-home-counter all-trips-home
       if extra-energy-obtained > 0 [set total-extra-energy-obtained lput extra-energy-obtained total-extra-energy-obtained]
       if extra-energy-obtained <= 0 [set total-extra-energy-obtained lput 0 total-extra-energy-obtained]
+      if energy-obtained < yearly-need  [set no-place TRUE]
   ]
 
 end
@@ -973,7 +999,10 @@ to continue-foraging
         go-home ;go home and empty truck
         find-best-stand
       ]
-      [find-next-best-location];;else if the truck isn't full, find the next best location based on travelling from the current patch
+      [
+        print "    Finding next location (continuing)"
+        find-next-best-location ;;else if the truck isn't full, find the next best location based on travelling from the current patch
+      ]
 
     ];; end if there is still time remaining committed to foraging
 
@@ -984,9 +1013,6 @@ to continue-foraging
     ]
 
   ];end while loop
-
-
-
 
 end
 
@@ -1025,10 +1051,19 @@ to set-params
 
   ;; DIAMETER ;;
   ;; Parameters derived from NLME equations
-  set dbc-asym-mean [ 0.725 0.503 ]
+  set dbc-asym-mean [ 0.145 0.031 ]
+  set dbc-asym-sd [ 0.078 0.01 ]
+  set dbc-asym-wc [ 0.029 0.006 ]
+  set dbc-lrc-mean [ -3.57 -1.018 ]
+  set dbc-lrc-sd [ 0.976 0.897 ]
+  set dbc-lrc-wc [ -0.215 -0.593 ]
+  ;; Parameter correlations (asym vs. lrc)
+  set dbc-corr [ -0.886 -0.866 ]
+
+  set dbc-asym-mean [ 0.336 0.303 ]
   set dbc-asym-sd [ 0.303 0.097 ]
   set dbc-asym-wc [ 0.0067 -0.0488 ]
-  set dbc-lrc-mean [ -3.645 -3.17 ]
+  set dbc-lrc-mean [ -3.645 -0.897 ]
   set dbc-lrc-sd [ 1.52 0.72 ]
   set dbc-lrc-wc [ -0.0383 1.718 ]
   ;; Parameter correlations (asym vs. lrc)
@@ -1102,17 +1137,10 @@ to get-dbc-params
     set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
 
     ;; 3. Back transform to asym and lrc
-    ;; Stochastic
-    ;set dbc-asym z1 * item species-number dbc-asym-sd + item species-number dbc-asym-mean
-    ;set dbc-asym dbc-asym + item species-number dbc-asym-wc * [wc] of patch-here
-    ;set dbc-lrc z1 * item species-number dbc-lrc-sd + item species-number dbc-lrc-mean
-    ;set dbc-lrc dbc-lrc + item species-number dbc-lrc-wc * [wc] of patch-here
-
-    ;; Deterministic
-    set dbc-asym item species-number dbc-asym-mean
-    ;set dbc-asym dbc-asym + item species-number dbc-asym-wc * [wc] of patch-here
-    set dbc-lrc item species-number dbc-lrc-mean
-    ;set dbc-lrc dbc-lrc + item species-number dbc-lrc-wc * [wc] of patch-here
+    set dbc-asym z1 * item species-number dbc-asym-sd + item species-number dbc-asym-mean
+    set dbc-asym dbc-asym + item species-number dbc-asym-wc * [wc] of patch-here
+    set dbc-lrc z1 * item species-number dbc-lrc-sd + item species-number dbc-lrc-mean
+    set dbc-lrc dbc-lrc + item species-number dbc-lrc-wc * [wc] of patch-here
 
   ]
 end
@@ -1134,16 +1162,9 @@ to get-carea-params
     set z2 tmp-corr * z1 + sqrt ( 1 - tmp-corr ^ 2 ) * z2
 
     ;; 3. Back transform to asym and lrc
-    ;; Stochastic
-    ;set carea-asym z1 * item species-number carea-asym-sd + item species-number carea-asym-mean
-    ;set carea-asym carea-asym + item species-number carea-asym-wc * [wc] of patch-here
-    ;set carea-lrc z1 * item species-number carea-lrc-sd + item species-number carea-lrc-mean
-    ;set carea-lrc carea-lrc + item species-number carea-lrc-wc * [wc] of patch-here
-
-    ;; Deterministic
-    set carea-asym item species-number carea-asym-mean
+    set carea-asym z1 * item species-number carea-asym-sd + item species-number carea-asym-mean
     set carea-asym carea-asym + item species-number carea-asym-wc * [wc] of patch-here
-    set carea-lrc item species-number carea-lrc-mean
+    set carea-lrc z1 * item species-number carea-lrc-sd + item species-number carea-lrc-mean
     set carea-lrc carea-lrc + item species-number carea-lrc-wc * [wc] of patch-here
 
   ]
@@ -1153,10 +1174,7 @@ to get-cwood-params
   ;; Set coefficient to relate diameter to c-wood
   set cwood-coef -9999
   while [ cwood-coef < 0 ] [
-    ;; Stochastic
-    ;set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
-    ;; Deterministic
-    set cwood-coef item species-number cwood-mean
+    set cwood-coef random-normal item species-number cwood-mean item species-number cwood-sd
   ]
 end
 
@@ -1864,7 +1882,7 @@ Max-travel
 Max-travel
 0
 5000
-2500.0
+5000.0
 500
 1
 patches
@@ -1879,7 +1897,7 @@ Time_vs_Energy_max
 Time_vs_Energy_max
 0
 1
-0.0
+0.5
 0.1
 1
 NIL
@@ -2081,25 +2099,6 @@ years-to-forage
 1
 years
 HORIZONTAL
-
-PLOT
-1165
-465
-1365
-615
-plot 2
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -13210332 true "" "plot mean [cwood] of trees with [species-number = 0]"
-"pen-1" 1.0 0 -6565750 true "" "plot mean [cwood] of trees with [species-number = 1]"
 
 @#$#@#$#@
 ## WHAT IS IT?
