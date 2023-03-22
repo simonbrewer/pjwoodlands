@@ -1851,7 +1851,7 @@ Max-travel
 Max-travel
 0
 5000
-2500.0
+5000.0
 500
 1
 patches
@@ -1935,7 +1935,7 @@ avg_base_need
 avg_base_need
 60000
 220000
-220000.0
+100000.0
 10000
 1
 mj
@@ -2015,7 +2015,7 @@ CHOOSER
 Show_Plots
 Show_Plots
 "show_all_plots" "show_forager_plots" "show_no_plots"
-2
+1
 
 SWITCH
 575
@@ -2063,11 +2063,49 @@ years-to-forage
 years-to-forage
 50
 500
-100.0
+500.0
 50
 1
 years
 HORIZONTAL
+
+PLOT
+855
+600
+1150
+790
+Cwood Balance
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Pinyon" 1.0 0 -8732573 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [cwood] of trees with [species = \"pine\"]]]"
+"Juniper" 1.0 0 -15456499 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [cwood] of trees with [species = \"juniper\"]]]"
+
+PLOT
+1150
+600
+1425
+790
+Dead Cwood
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Pinyon" 1.0 0 -1664597 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [cwood] of trees with [species = \"pine\" and live? = FALSE]]]"
+"Juniper" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [cwood] of trees with [species = \"juniper\" and live? = FALSE]]]"
 
 @#$#@#$#@
 ## WHAT IS IT?
