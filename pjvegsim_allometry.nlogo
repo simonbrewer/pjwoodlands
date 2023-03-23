@@ -63,6 +63,9 @@ globals [
   mort-asym
   mort-lrc
 
+  ;; Climate change influence
+  clim_change_loss
+
   ;; Trackers
   dead-trees
   new-trees
@@ -134,6 +137,7 @@ trees-own [
   decay-rate-standing
   decay-rate-fallen
   pfall ;;  prob of falling once dead
+  cwood-variance ;adjuster for adding stochastic variance to tree size (20% to 500% of mean tree size)
 
   avail-megajoules ;;total energy stored in tree - eventually will be kg of material in tree * megajoule conversion factor (21 for pine 16 for juniper)
                    ;;right now this is c-wood * 21 or 16
@@ -208,6 +212,11 @@ to setup
 
   ;; hard code growth model for now (choices are 'guess' or 'grier'
   set growth-model "grier"
+
+  ;;establish the climate change scenario
+  if Clim_Change_Scenario = "Stable" [set clim_change_loss 1]
+  if Clim_Change_Scenario = "Low_Emission" [set clim_change_loss 0.865] ;forecaste is 13.5% loss in biomass under low emissions
+  if Clim_Change_Scenario = "High_Emission" [set clim_change_loss 0.786] ;forecast is 21.4% loss in biomass under high emissions
 
   ;; List of all fires sizes
   set all-fire-sizes []
@@ -323,6 +332,8 @@ to go
 
   ;; Begin forager behavior
   if ticks >= woodland-generation-period [ ;; allow woodland growth and death to happen before foragers begin operating
+    ;print max [cwood] of trees with [live? = FALSE]
+    ;print count trees with [live? = FALSE and cwood > 1000]
     reset-state-vars
     forage
     record-output-lists
@@ -466,7 +477,7 @@ to spark
   set fire-size 0
   ask one-of patches with [occupied?]
   [
-    if show_visuals [set pcolor red]
+    if show_visuals []
     set n-fires n-fires + 1
     ask trees-here [
       set burning? true
@@ -486,7 +497,7 @@ to spread
       ask ( trees-on neighbors ) with [ not burning? ] [
         if random-float 0.45 < flammability [
           ask patch-here [
-            if show_visuals [set pcolor red]
+            if show_visuals []
             set n-fires n-fires + 1
           ]
           set burning? true
@@ -533,7 +544,7 @@ to make-foragers
       set finished FALSE ;upon creation, no forager has already acquired their annual energy need
       set max-truckload-empty Max_truck_capacity * 1360 ;;cords * 1360 to estimate kgs of wood a completely empty truck can haul. (Approx. 3000 lbs per cord dry, which translates
                                                         ;;to ~1360 kg if we estimate 3000 lbs per cord
-      set yearly-need round ((avg_base_need * (1 + need_multiplier)) + random-normal 0 need_variance) ;;set yearly energy need in megajoules - NEEDS TO BE EDITED FOR PROPER UNIT VALUES
+      set yearly-need round ((avg_base_need * (1 + need_multiplier)) + random-normal 0 need_variance) ;;set yearly energy need in megajoules
       set wood-taken-lifetime 0 ;;start the agent having taken no wood
       set energy-obtained 0;;start having obtained no energy
       set dist-travel-year 0 ;;start with having no distance travelled
@@ -585,6 +596,9 @@ to reset-state-vars
     set max-load-energy 0
     set travel-cost-here-home 0
   ]
+
+  ;this is for when we turn on coloring a patch that has been harvested
+  ;ask patches [set pcolor white]
 
 end
 
@@ -730,7 +744,7 @@ to harvest
             set harvested-from? TRUE ;record that the patch has been harvested from
                                      ;color-patch ;run the color patch code which will only color this patch
           ]
-          ask patch-here [set pcolor yellow]
+          ;ask patch-here [set pcolor yellow]
           ask patches in-radius stand-size [update-stand] ;have all cells that include the harvested patch in their stand values update the stand values
 
           set finished TRUE ;agent records that they have finished harvesting for the year (i.e., met their quota)
@@ -754,7 +768,7 @@ to harvest
             set harvested-from? TRUE ;record that the patch has been harvested from
                                      ;color-patch ;run the color patch code which will only color this patch
           ]
-          ask patch-here [set pcolor yellow]
+          ;ask patch-here [set pcolor yellow]
           ask patches in-radius stand-size [update-stand] ;have all cells that include the harvested patch in their stand values update the stand values
 
           ;then begin the process of taking extra (including from current patch)
@@ -803,7 +817,7 @@ to harvest
           set harvested-from? TRUE ;record that the patch has been harvested from
                                    ;color-patch ;run the color patch code which will only color this patch
         ]
-        ask patch-here [set pcolor yellow]
+        ;ask patch-here [set pcolor yellow]
         ask patches in-radius stand-size [update-stand] ;have all cells that include the harvested patch in their stand values update the stand values
 
 
@@ -1025,19 +1039,10 @@ to set-params
 
   ;; DIAMETER ;;
   ;; Parameters derived from NLME equations
-  set dbc-asym-mean [ 0.145 0.031 ]
-  set dbc-asym-sd [ 0.078 0.01 ]
-  set dbc-asym-wc [ 0.029 0.006 ]
-  set dbc-lrc-mean [ -3.57 -1.018 ]
-  set dbc-lrc-sd [ 0.976 0.897 ]
-  set dbc-lrc-wc [ -0.215 -0.593 ]
-  ;; Parameter correlations (asym vs. lrc)
-  set dbc-corr [ -0.886 -0.866 ]
-
-  set dbc-asym-mean [ 0.336 0.303 ]
+  set dbc-asym-mean [ 0.725 0.503 ]
   set dbc-asym-sd [ 0.303 0.097 ]
   set dbc-asym-wc [ 0.0067 -0.0488 ]
-  set dbc-lrc-mean [ -3.645 -0.897 ]
+  set dbc-lrc-mean [ -3.645 -3.17 ]
   set dbc-lrc-sd [ 1.52 0.72 ]
   set dbc-lrc-wc [ -0.0383 1.718 ]
   ;; Parameter correlations (asym vs. lrc)
@@ -1119,9 +1124,9 @@ to get-dbc-params
 
     ;; Deterministic
     set dbc-asym item species-number dbc-asym-mean
-    set dbc-asym dbc-asym + item species-number dbc-asym-wc * [wc] of patch-here
+    ;set dbc-asym dbc-asym + item species-number dbc-asym-wc * [wc] of patch-here
     set dbc-lrc item species-number dbc-lrc-mean
-    set dbc-lrc dbc-lrc + item species-number dbc-lrc-wc * [wc] of patch-here
+    ;set dbc-lrc dbc-lrc + item species-number dbc-lrc-wc * [wc] of patch-here
 
   ]
 end
@@ -1199,7 +1204,9 @@ to calc-cwood-carea
   ;; Could merge this into single statement
   let a item species-number cwood-carea-coef-a
   let b item species-number cwood-carea-coef-b
-  set cwood a + b * carea
+  ifelse ticks >= woodland-generation-period + 100
+  [set cwood (a + b * carea) * cwood-variance * clim_change_loss]
+  [set cwood (a + b * carea) * cwood-variance]
 end
 
 to calc-cwood-hgt
@@ -1251,7 +1258,9 @@ to calc-drc-cwood
   ]
 
   let lcwood B0 + B1 * log (100 * tmp-drc) 10
-  set cwood 10 ^ lcwood
+  ifelse ticks >= woodland-generation-period + 100
+  [set cwood (10 ^ lcwood) * cwood-variance * clim_change_loss]
+  [set cwood (10 ^ lcwood) * cwood-variance]
 
 end
 
@@ -1266,7 +1275,8 @@ to recruitment
   set pfall 0.25
   set dist-from-home-base distance patch 0 0 ;;know how far the patch is from home base - this is used by agents
   set travel-cost-here-home 0;; no agents have moved so this value should be zero
-
+  ;set cwood-variance (random-float 4.8) + 0.2 ;stochasticity for cwood based up LPJ Guess model which shows trees vary from about 20% to 500% the mean tree size
+  set cwood-variance exp random-normal ln 1 ln 1.5 ;random normal dis for adjusting cwood
   ifelse species-number = 0
   [
     set species "pine"
@@ -1415,11 +1425,11 @@ end
 GRAPHICS-WINDOW
 5
 10
-453
-459
+517
+523
 -1
 -1
-5.0
+6.0
 1
 10
 1
@@ -1430,9 +1440,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-87
+83
 0
-87
+83
 1
 1
 1
@@ -1440,10 +1450,10 @@ ticks
 30.0
 
 BUTTON
-15
-485
-81
-518
+5
+530
+71
+563
 NIL
 setup\n
 NIL
@@ -1457,9 +1467,9 @@ NIL
 1
 
 PLOT
-955
+1020
 465
-1155
+1220
 585
 Soil WC
 NIL
@@ -1475,10 +1485,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" [histogram [wc] of patches]"
 
 BUTTON
-15
-525
-78
-558
+5
+570
+68
+603
 NIL
 go
 T
@@ -1492,9 +1502,9 @@ NIL
 1
 
 PLOT
-460
+525
 10
-660
+725
 160
 Tree diameter (0)
 NIL
@@ -1510,9 +1520,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-460
+525
 160
-660
+725
 310
 Tree diameter (1)
 NIL
@@ -1528,9 +1538,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-1060
+1125
 310
-1260
+1325
 460
 CWood coefs
 NIL
@@ -1547,9 +1557,9 @@ PENS
 "pen-1" 0.2 1 -2674135 true "" "if Show_plots = \"show_all_plots\" [histogram [cwood-coef] of trees with [species-number = 1]]"
 
 PLOT
-860
+925
 10
-1060
+1125
 160
 CWood (0)
 NIL
@@ -1565,9 +1575,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-860
+925
 160
-1060
+1125
 310
 CWood (1)
 NIL
@@ -1583,9 +1593,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-460
+525
 310
-660
+725
 460
 Dead trees / tick
 NIL
@@ -1601,9 +1611,9 @@ PENS
 "dead" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" [plot dead-trees]"
 
 PLOT
-660
+725
 310
-860
+925
 460
 New trees / tick
 NIL
@@ -1619,9 +1629,9 @@ PENS
 "default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" [plot new-trees]"
 
 PLOT
-860
+925
 310
-1060
+1125
 460
 Removed trees / tick
 NIL
@@ -1637,9 +1647,9 @@ PENS
 "default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" [plot removed-trees]"
 
 PLOT
-460
+525
 465
-955
+1020
 585
 Age distribution
 NIL
@@ -1656,10 +1666,10 @@ PENS
 "juniper" 1.0 1 -2674135 true "" "if Show_plots = \"show_all_plots\" [histogram [age] of trees with [species-number = 1]]"
 
 BUTTON
-90
-485
-187
-518
+80
+530
+177
+563
 NIL
 show-burn
 NIL
@@ -1673,10 +1683,10 @@ NIL
 1
 
 SWITCH
-90
-525
-193
-558
+80
+570
+183
+603
 fire?
 fire?
 1
@@ -1684,10 +1694,10 @@ fire?
 -1000
 
 PLOT
-210
-465
-450
+1420
 585
+1580
+710
 plot 1
 NIL
 NIL
@@ -1703,10 +1713,10 @@ PENS
 "juniper" 1.0 0 -13210332 true "" "if Show_plots = \"show_all_plots\" [plot mean-suitability-juniper]"
 
 SLIDER
-15
-630
-300
-663
+5
+650
+290
+683
 Excess_volume_taken_pinyon
 Excess_volume_taken_pinyon
 0
@@ -1718,10 +1728,10 @@ percent truck bed
 HORIZONTAL
 
 SLIDER
-15
-670
-300
-703
+5
+690
+290
+723
 Excess_volume_taken_juniper
 Excess_volume_taken_juniper
 0
@@ -1733,10 +1743,10 @@ percent truck bed
 HORIZONTAL
 
 SLIDER
-15
-590
-187
-623
+5
+610
+177
+643
 num_foragers
 num_foragers
 0
@@ -1748,10 +1758,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-15
-710
-247
-743
+295
+690
+527
+723
 Max_truck_capacity
 Max_truck_capacity
 0.20
@@ -1763,10 +1773,10 @@ cords (wood)
 HORIZONTAL
 
 SLIDER
-585
-590
-782
-623
+310
+570
+490
+603
 proportion_harvest_remain
 proportion_harvest_remain
 0
@@ -1778,10 +1788,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-305
-630
-567
-663
+445
+610
+680
+643
 Live_wood_energy
 Live_wood_energy
 0
@@ -1793,9 +1803,9 @@ Live_wood_energy
 HORIZONTAL
 
 PLOT
-1260
+1325
 10
-1570
+1600
 160
 Dist. Travelled per Year
 Tick
@@ -1814,9 +1824,9 @@ PENS
 "Max-travel" 1.0 0 -7500403 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot Max-travel]]"
 
 PLOT
-1260
+1325
 310
-1460
+1525
 460
 Foraging Trips per Turn (Histogram)
 No. Trips
@@ -1832,9 +1842,9 @@ PENS
 "default" 1.0 1 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [histogram all-trips-home]]"
 
 PLOT
-1060
+1125
 10
-1260
+1325
 160
 Proportion all Foragers not meeting energy need
 Tick
@@ -1850,10 +1860,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks > woodland-generation-period [plot count foragers with [energy-obtained < yearly-need] / num_foragers]]"
 
 SLIDER
-305
-670
-587
-703
+685
+610
+925
+643
 Standing_dead_energy
 Standing_dead_energy
 0
@@ -1865,25 +1875,25 @@ Standing_dead_energy
 HORIZONTAL
 
 SLIDER
-15
-750
-187
-783
+540
+650
+690
+683
 Max-travel
 Max-travel
 0
-5000
-2500.0
+10000
+5000.0
 500
 1
 patches
 HORIZONTAL
 
 SLIDER
-255
-710
-427
-743
+535
+690
+707
+723
 Time_vs_Energy_max
 Time_vs_Energy_max
 0
@@ -1895,9 +1905,9 @@ NIL
 HORIZONTAL
 
 PLOT
-1060
+1125
 160
-1260
+1325
 310
 Extra energy (mj) obtained
 NIL
@@ -1915,9 +1925,9 @@ PENS
 "Min" 1.0 0 -8990512 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot min [extra-energy-obtained] of foragers]]"
 
 PLOT
-1260
+1325
 160
-1460
+1525
 310
 Wood Harvested by Species
 NIL
@@ -1934,28 +1944,28 @@ PENS
 "Juniper" 1.0 0 -14333415 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [lifetime-juniper] of foragers]]"
 
 SLIDER
-195
-750
-382
-783
+700
+650
+855
+683
 stand-size
 stand-size
 1
 5
-2.0
+3.0
 1
 1
 grid-cell radius
 HORIZONTAL
 
 SLIDER
-195
-590
-330
-623
+185
+530
+320
+563
 avg_base_need
 avg_base_need
-60000
+40000
 220000
 60000.0
 10000
@@ -1964,10 +1974,10 @@ mj
 HORIZONTAL
 
 SLIDER
-335
-590
-455
-623
+325
+530
+445
+563
 need_variance
 need_variance
 0
@@ -1979,10 +1989,10 @@ mj
 HORIZONTAL
 
 SLIDER
-460
-590
-580
-623
+185
+570
+305
+603
 need_multiplier
 need_multiplier
 0
@@ -1994,9 +2004,9 @@ NIL
 HORIZONTAL
 
 PLOT
-660
+725
 10
-860
+925
 160
 Tree DRC (0)
 NIL
@@ -2012,9 +2022,9 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 PLOT
-660
+725
 160
-860
+925
 310
 Tree DRC (1)
 NIL
@@ -2030,20 +2040,20 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 CHOOSER
-435
-710
-592
-755
+5
+730
+162
+775
 Show_Plots
 Show_Plots
 "show_all_plots" "show_forager_plots" "show_no_plots"
 2
 
 SWITCH
-575
-630
-702
-663
+185
+610
+312
+643
 show_visuals
 show_visuals
 1
@@ -2051,10 +2061,10 @@ show_visuals
 -1000
 
 SWITCH
-710
-630
-827
-663
+320
+610
+437
+643
 record_csv
 record_csv
 1
@@ -2062,10 +2072,10 @@ record_csv
 -1000
 
 SLIDER
-595
-670
-832
-703
+295
+650
+532
+683
 woodland-generation-period
 woodland-generation-period
 0
@@ -2077,19 +2087,88 @@ years
 HORIZONTAL
 
 SLIDER
-600
-710
-772
-743
+715
+690
+887
+723
 years-to-forage
 years-to-forage
 50
 500
-100.0
+200.0
 50
 1
 years
 HORIZONTAL
+
+PLOT
+1220
+465
+1525
+585
+Mean cwood per tree
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Pinyon" 1.0 0 -13840069 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [plot mean [cwood] of trees with [species-number = 0]]"
+"Juniper" 1.0 0 -15456499 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [plot mean [cwood] of trees with [species-number = 1]]"
+"Pinyon dead" 1.0 0 -1264960 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [plot mean [cwood] of trees with [species-number = 0 and live? = FALSE]]"
+"Juniper dead" 1.0 0 -13791810 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [plot mean [cwood] of trees with [species-number = 1 and live? = FALSE]]"
+
+PLOT
+1020
+585
+1220
+710
+Overall Cwood
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"Pinyon" 1.0 0 -13840069 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [cwood] of trees with [species = \"pine\"]]]"
+"Juniper" 1.0 0 -15456499 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [cwood] of trees with [species = \"juniper\"]]]"
+
+PLOT
+1220
+585
+1420
+710
+Dead cwood
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"Pinyon" 1.0 0 -13840069 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [cwood] of trees with [species = \"pine\" and live? = FALSE]]]"
+"Juniper" 1.0 0 -15456499 true "" "if Show_plots = \"show_all_plots\" or Show_plots = \"show_forager_plots\" [if ticks >= woodland-generation-period [plot sum [cwood] of trees with [species = \"juniper\" and live? = FALSE]]]"
+
+CHOOSER
+170
+730
+317
+775
+Clim_Change_Scenario
+Clim_Change_Scenario
+"Stable" "Low_Emission" "High_Emission"
+0
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -2524,7 +2603,7 @@ NetLogo 6.2.2
       <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="stand-size">
-      <value value="2"/>
+      <value value="3"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="need_variance">
       <value value="0"/>
@@ -2534,8 +2613,6 @@ NetLogo 6.2.2
     </enumeratedValueSet>
     <enumeratedValueSet variable="Time_vs_Energy_max">
       <value value="0"/>
-      <value value="0.5"/>
-      <value value="1"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="proportion_harvest_remain">
       <value value="0.1"/>
@@ -2557,6 +2634,94 @@ NetLogo 6.2.2
     </enumeratedValueSet>
     <enumeratedValueSet variable="show_visuals">
       <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="PTB_experiments" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="400"/>
+    <metric>sum met-need-list / years-to-forage</metric>
+    <metric>sum met-need-list / years-to-forage</metric>
+    <metric>sum mean-dist-list / years-to-forage</metric>
+    <metric>sum mean-trips-list / years-to-forage</metric>
+    <metric>sum mean-energy-list / years-to-forage</metric>
+    <metric>sum mean-kgwood-list / years-to-forage</metric>
+    <metric>sum live-pbio-list / years-to-forage</metric>
+    <metric>sum stand-pbio-list / years-to-forage</metric>
+    <metric>sum fall-pbio-list / years-to-forage</metric>
+    <metric>sum live-jbio-list / years-to-forage</metric>
+    <metric>sum stand-jbio-list / years-to-forage</metric>
+    <metric>sum fall-jbio-list / years-to-forage</metric>
+    <metric>mean count-p-trees</metric>
+    <metric>mean count-j-trees</metric>
+    <metric>ticks-no-trees</metric>
+    <metric>sum mean-agep-list / years-to-forage</metric>
+    <metric>sum mean-agej-list / years-to-forage</metric>
+    <enumeratedValueSet variable="Show_Plots">
+      <value value="&quot;show_no_plots&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="record_csv">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="need_multiplier">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Excess_volume_taken_pinyon">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="avg_base_need">
+      <value value="60000"/>
+      <value value="100000"/>
+      <value value="140000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fire?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Live_wood_energy">
+      <value value="0"/>
+      <value value="0.15"/>
+      <value value="0.85"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="years-to-forage">
+      <value value="200"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stand-size">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Time_vs_Energy_max">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Max-travel">
+      <value value="5000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="need_variance">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="proportion_harvest_remain">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num_foragers">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Standing_dead_energy">
+      <value value="0.9"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Max_truck_capacity">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="woodland-generation-period">
+      <value value="200"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Excess_volume_taken_juniper">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show_visuals">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Clim_Change_Scenario">
+      <value value="&quot;Stable&quot;"/>
+      <value value="&quot;Low_Emission&quot;"/>
+      <value value="&quot;High_Emission&quot;"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
