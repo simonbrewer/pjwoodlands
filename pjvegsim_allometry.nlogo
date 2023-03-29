@@ -1,13 +1,3 @@
-;; comment for whole team
-
-;;-	Made Trees and Foragers their own breeds
-;;-	Added a factor to punish the energy return from live trees as well as differentiate standing vs fallen dead tree returns (standing return slightly less energy than fallen which give full amount)
-;;-	Added agents and agent behaviors
-
-;;Needs remaining
-;;- validate all working
-;;- Put values on same unit scales & make them reasonable (truck space, wood per tree, energy from unit of wood per tree, annual energy need, etc.)
-
 ;; new updates with total biomass equations based on FIA data
 ;; from Cunliffe et al; McIntire et al
 
@@ -92,8 +82,12 @@ globals [
   live-jbio-list ;juniper list
   stand-jbio-list
   fall-jbio-list
-  count-p-trees ;count of pinyon trees per turn
-  count-j-trees ;count of juniper trees per turn
+  count-p-trees-live
+  count-j-trees-live
+  count-p-trees-stand
+  count-j-trees-stand
+  count-p-trees-fall
+  count-j-trees-fall
   mean-agep-list ;running list of average pinyon tree age
   mean-agej-list ;juniper age list
   sd-agep-list ;running list of standard-deviation in pinyon tree age
@@ -555,12 +549,6 @@ to make-foragers
       set truckload-space-taken 0
       set wood-per-patch []
       set travel-dist-per-year Max-travel
-      ;        [set travel-dist-per-bout round (15 + random-float 50)];if running the model where agents have a limit to the distance they can travel, agents have a total number of patches they can move
-      ;        ;per foraging bout. Right now this is between 25 and 100 patches away from home. Double this would be the max move they could make because it would be up to 100 out and 100 back.
-      ;        [set travel-dist-per-bout 500];else if running the model with no distance limit, there is no need to worry about a travel distance limit so
-      ;          ;;we will set it as 50,000. By which point agents will have had to have filled the truck
-      ; set poss-trees trees in-radius (travel-dist-per-bout / 2) ;list of possible trees an agent can get to, divide by 2 to account for the fact they need to go out and back
-      ; set poss-patches poss-patches with [home-base? = FALSE];drop home-base from possible foraging patches
       set no-place FALSE
       set total-extra-energy-obtained [] ;;make an empty list
       set extra-energy-obtained 0
@@ -870,8 +858,8 @@ to find-next-best-location
   ask trees-here [set home-base? FALSE];;have current patch go back to not being a home patch
   let best-tree max-one-of t-option-trees [temp-RR]
   ifelse best-tree = nobody or [temp-RR] of best-tree <= 0
-    [;if there are no patches that can be targeted (i.e., no patches with energy are in reach, go home - this could happen due to depletion or distance already traveled)
-      go-home;go home to unload anything you have
+    [;if there are no patches that can be targeted (i.e., no patches with energy are in reach)
+      ;go-home;go home to unload anything you have. This is left here as an option as sometimes some ethnographic observations said people may go home whereas others would continue to fill the truck.
       find-best-stand ;try to see if there is another stand you can reach with energy
   ]
   ;else, if there is a tree you can reach with energy
@@ -1317,14 +1305,6 @@ to recruitment
 end
 
 to update-stand
-  ;ask patches [
-  ;  set stand-cwood-live sum [cwood] of trees in-radius 10 with [ live? ]
-  ;  set stand-cwood-dead-standing sum [cwood] of trees in-radius 10 with [ not live? and standing? ]
-  ;  set stand-cwood-dead-fallen sum [cwood] of trees in-radius 10 with [ not live? and not standing? ]
-  ;  set pcolor scale-color green stand-cwood-dead-standing 0 1000
-  ;]
-  ;here we use available megajoules of energy rather than cwood for stand values b/c avail-megajoules takes into consideration the type of wood (pinyon vs juniper)
-  ;whereas cwood does not
 
   set stand-mj-live sum [avail-megajoules] of trees in-radius stand-size with [live?]
   set stand-mj-dead-standing sum [avail-megajoules] of trees in-radius stand-size with [not live? and standing?]
@@ -1334,8 +1314,6 @@ to update-stand
   ifelse distance patch 0 0 = 0 ;;cost distance. Megajoules divided by distance from home-base. This is the return rate the agent can get
     [set stand-RR (stand-megajoules)] ;; a tree on patch 0 0 has no distance factored in
   [set stand-RR (stand-megajoules / distance patch 0 0)]
-
-
 end
 
 to-report mean-suitability-pine
@@ -1374,8 +1352,12 @@ to setup-output-lists
   set mean-agej-list []
   set sd-agep-list []
   set sd-agej-list []
-  set count-p-trees []
-  set count-j-trees []
+  set count-p-trees-live []
+  set count-j-trees-live []
+  set count-p-trees-stand []
+  set count-j-trees-stand []
+  set count-p-trees-fall []
+  set count-j-trees-fall []
 end
 
 to record-output-lists
@@ -1391,8 +1373,12 @@ to record-output-lists
   ifelse count trees with [species = "juniper" and live? = TRUE] > 0 [set live-jbio-list lput sum [cwood] of trees with [species = "juniper" and live? = TRUE] live-jbio-list] [set live-jbio-list lput 0 live-jbio-list]
   ifelse count trees with [species = "juniper" and live? = FALSE and standing? = TRUE] > 0 [set stand-jbio-list lput sum [cwood] of trees with [species = "juniper" and live? = FALSE and standing? = TRUE] stand-jbio-list] [set stand-jbio-list lput 0 stand-jbio-list]
   ifelse count trees with [species = "juniper" and standing? = FALSE] > 0 [set fall-jbio-list lput sum [cwood] of trees with [species = "juniper" and standing? = FALSE] fall-jbio-list] [set fall-jbio-list lput 0 fall-jbio-list]
-  set count-p-trees lput count trees with [species = "pine"] count-p-trees
-  set count-j-trees lput count trees with [species = "juniper"] count-j-trees
+  set count-p-trees-live lput count trees with [species = "pine" and live? = TRUE] count-p-trees-live
+  set count-j-trees-live lput count trees with [species = "juniper" and live? = TRUE] count-j-trees-live
+  set count-p-trees-stand lput count trees with [species = "pine" and live? = FALSE and standing? = TRUE] count-p-trees-stand
+  set count-j-trees-stand lput count trees with [species = "juniper" and live? = FALSE and standing? = TRUE] count-j-trees-stand
+  set count-p-trees-fall lput count trees with [species = "pine" and live? = FALSE and standing? = FALSE] count-p-trees-fall
+  set count-j-trees-fall lput count trees with [species = "juniper" and live? = FALSE and standing? = FALSE] count-j-trees-fall
   ifelse count trees with [species = "pine"] > 0 [set mean-agep-list lput mean [age] of trees with [species = "pine"] mean-agep-list] [set mean-agep-list lput 0 mean-agep-list]
   ifelse count trees with [species = "juniper"] > 0 [set mean-agej-list lput mean [age] of trees with [species = "juniper"] mean-agej-list] [set mean-agej-list lput 0 mean-agej-list]
   ;set sd-agep-list lput standard-deviation [age] of trees with [species = "pine"] sd-agep-list
@@ -1796,7 +1782,7 @@ Live_wood_energy
 Live_wood_energy
 0
 1
-0.0
+0.85
 0.01
 1
 % of ideal max
@@ -1967,7 +1953,7 @@ avg_base_need
 avg_base_need
 40000
 220000
-60000.0
+140000.0
 10000
 1
 mj
@@ -2047,7 +2033,7 @@ CHOOSER
 Show_Plots
 Show_Plots
 "show_all_plots" "show_forager_plots" "show_no_plots"
-2
+1
 
 SWITCH
 185
@@ -2056,7 +2042,7 @@ SWITCH
 643
 show_visuals
 show_visuals
-1
+0
 1
 -1000
 
@@ -2168,44 +2154,22 @@ CHOOSER
 Clim_Change_Scenario
 Clim_Change_Scenario
 "Stable" "Low_Emission" "High_Emission"
-0
+2
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+This model is developed to evaluate the human-environment interactions of individuals reliant upon firewood as a major energy source and the woodlands they use for acquisition. In particular the model explores impacts on both humans and the woodlands as a result of changes in energy demand, woodland biomass loss due to climate change, and the adoption or abandonment of Indigenous Ecological Knowledge harvesting practices. The model is based upon Diné (Navajo) firewood harvesters in San Juan County, Utah utilizing  pinyon-juniper (PJ) woodlands. 
 
 ## HOW IT WORKS
 
-(what rules the agents use to create the overall behavior of the model)
+The model is comprised of trees and foragers. At initialization, 15% of grid cells sprout trees. Trees are probabilistically weighted to be more likely to be pinyon moving north and juniper moving south from the central axis to emulate extant forest composition in the study area. Trees are modeled using published annual growth allometries to enable the model to grow a model living woodlands. Growth occurs at annual increments, matching the temporal step where one model time step (tick) represents one year. On each tick, living trees undergo growth, attempt to reproduce if they have reached maturity, and have a chance of death that probabilistically increases with tree age. Once a tree dies, it becomes standing deadwood and begins a process of decay. Standing dead trees also may fall, emulating the effects of erosion, windstorms, etc. on woodland habitats. Fallen deadwood trees decay at a faster rate than standing dead trees. These tree life-processes run across 200 years prior to forager activity allowing the woodland to reach an equilibrium state that produces proportional live biomass in line with observations from the study area. Tree life-processes continue until the model ends. 
+
+Once the woodland generation period is complete, the woodhauler(s) begin operating. Woodhaulers are assigned an annual energy need they attempt to fill each tick. Modelled as rate maximizers, woodhauler decisions follow behaviors from the prey choice model and marginal value theorem (Charnov, 1976a, 1976b), resulting in woodhaulers evaluating tree stands, and individual trees within them, based on the amount of wood relative to the distance from the woodhauler. As fallen deadwood requires the least harvesting effort, standing deadwood and any harvested live trees return less energy relative to fallen deadwood, reflecting the increased energy expenditure required for harvesting. Woodhaulers harvest trees until either their truck is full or they have met their annual energy need. All woodhauler’s’ trucks may carry a user-defined number of cords of wood, here balanced on a single cord weighing approximately 1360 kgs. If a woodhauler fills their truck, but the harvested wood does not meet their annual energy need, they return to the start point, empty their truck, and repeat the identification of productive locations and harvest processes until either their need is met or they run out of travel time, ending the tick without meeting their need. The 200-tick harvesting period, split into 100-tick phases, works as follows: In the first phase, everything operates as noted above, allowing the foragers and woodland to reach a harvesting equilibrium state. In the second phase, climate change impacts are introduced as tree biomass decreases based upon the forecasted emission scenarios. 
 
 ## HOW TO USE IT
+The model is designed to be used to understand broad, relative patterns in woodhauler experiences and woodland ecosystem health as a result of firewood harvest under differing levels of demand (avg_base_need), supply (Clim_Change_Scenario), and Indigenous Ecological Knowledge (Live_wood_energy). Varying those 3 key parameters allows the user to observe long-term dynamics in costs to woodhaulers, woodland composition, and woodland health via the various plots. Additional inputs user may vary include need_variance (variation in how much energy is needed between foragers to look at how varied socio-economic condition impacts people), need_multiplier (an easy way to rapidly increase demand), proportion_harvest_remain (the amount of wood left on a patch after a tree has been harvested - representing small branches/twigs/leaves that are not used by foragers), Standing_dead_energy (how much cost a forager pays to take standing deadwood relative to fallen deadwood), Excess_volume_taken_pinyon and Excess_volume_taken_juniper (the amount of space in a truckbed that is not taken up by wood but is empty air due to the mishapen nature of unprocessed wood), woodland-generation-period (how long the woodland ecosystem develops before foragers begin harvesting), Max-travel (the travel budget, in patch units, of foragers), stand-size (the radius dimension at which stands are created and evaluated), Max_truck_capacity (the amount of wood, in cords, a forager may haul in a single load), Time_vs_Energy_max (the extent to which foragers are time minimizers versus energy maximizers), years-to-forage (how many years foragers will operate before the model ends), Show_plots (which of the plots to visualize while running the model - plots significantly slow down runtime), show_visuals (whether to visualize tree growth, death, and fall during hte model run), and Clim_Change_Scenario (what type of climate change, based on amount of emissions, future to use for the model run).
 
-(how to use the model, including a description of each of the items in the Interface tab)
-
-## THINGS TO NOTICE
-
-(suggested things for the user to notice while running the model)
-
-## THINGS TO TRY
-
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
-
-## EXTENDING THE MODEL
-
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
-
-## NETLOGO FEATURES
-
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
-
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
-
-## CREDITS AND REFERENCES
-
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
 @#$#@#$#@
 default
 true
@@ -2652,8 +2616,12 @@ NetLogo 6.2.2
     <metric>sum live-jbio-list / years-to-forage</metric>
     <metric>sum stand-jbio-list / years-to-forage</metric>
     <metric>sum fall-jbio-list / years-to-forage</metric>
-    <metric>mean count-p-trees</metric>
-    <metric>mean count-j-trees</metric>
+    <metric>mean count-p-trees-live</metric>
+    <metric>mean count-j-trees-live</metric>
+    <metric>mean count-p-trees-stand</metric>
+    <metric>mean count-j-trees-stand</metric>
+    <metric>mean count-p-trees-fall</metric>
+    <metric>mean count-j-trees-fall</metric>
     <metric>ticks-no-trees</metric>
     <metric>sum mean-agep-list / years-to-forage</metric>
     <metric>sum mean-agej-list / years-to-forage</metric>
